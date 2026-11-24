@@ -50,6 +50,7 @@ def check(cond, msg):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # 윈도우 콘솔에서도 한글 출력
     built = "--built" in sys.argv
     home = tempfile.mkdtemp(prefix="wiki-smoke-")
     env = dict(os.environ, GAMEWIKI_HOME=home, PORT=str(PORT), PYTHONUTF8="1")
