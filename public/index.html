@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기획 위키</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="#/"><span class="brand-mark">◆</span> 기획 위키</a>
+      <div id="projHead"></div>
+      <button class="btn primary block" id="newBtn" hidden>+ 새 문서</button>
+      <input class="search" id="search" type="search" placeholder="문서 검색" hidden>
+      <nav id="nav" class="nav"></nav>
+      <div class="sidebar-foot">
+        <label class="ai-pick">AI
+          <select id="aiSelect"></select>
+        </label>
+        <div class="version" id="version"></div>
+      </div>
+    </aside>
+    <main id="main" class="main"></main>
+  </div>
+
+  <div id="overlay" class="overlay" hidden>
+    <div class="overlay-card">
+      <div class="spinner"></div>
+      <div class="overlay-title" id="overlayTitle">AI가 문서를 쓰는 중</div>
+      <div class="overlay-sub" id="overlaySub"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <input type="file" id="filePick" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+  <script src="/app.js"></script>
+</body>
+</html>

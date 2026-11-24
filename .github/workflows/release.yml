@@ -1,0 +1,78 @@
+# main에 올리면 맥/윈도우 빌드와 테스트만 돌고,
+# v로 시작하는 태그(예: v0.1.0)를 올리면 빌드한 파일로 GitHub 릴리즈까지 만든다.
+name: 빌드 및 릴리즈
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 소스 테스트
+        run: python scripts/smoke.py
+
+      - name: PyInstaller 설치
+        run: python -m pip install pyinstaller
+
+      - name: Inno Setup 확인 (윈도우)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: 앱 빌드
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then VERSION="$GITHUB_REF_NAME"; else VERSION="0.0.0-dev.${GITHUB_SHA::7}"; fi
+          python scripts/build.py --version "$VERSION"
+
+      - name: 배포판 테스트
+        run: python scripts/smoke.py --built
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gihoek-wiki-${{ runner.os }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 릴리즈 만들기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la dist
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "기획위키 $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md \
+            --generate-notes

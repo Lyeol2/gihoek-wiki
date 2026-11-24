@@ -1,0 +1,14 @@
+# 개인 데이터와 설정 (레포에 올리지 않음)
+config.json
+projects/
+data/
+
+# 빌드 결과물
+build/
+dist/
+macapp/build/
+기획위키.app/
+*.spec
+
+__pycache__/
+.DS_Store

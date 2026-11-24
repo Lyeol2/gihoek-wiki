@@ -1,0 +1,478 @@
+[
+  {
+    "id": "concept",
+    "name": "컨셉 제안서",
+    "folder": "컨셉",
+    "icon": "✦",
+    "color": "#7c5cff",
+    "layout": "proposal",
+    "description": "게임 한 장 요약. 피치, 핵심 재미, 코어 루프, 차별점을 제안서 형태로.",
+    "fields": [
+      {
+        "key": "tagline",
+        "label": "한 줄 피치",
+        "type": "text",
+        "place": "hero",
+        "hint": "게임을 한 문장으로. 25자 안팎, 광고 카피처럼."
+      },
+      {
+        "key": "keyart",
+        "label": "키 아트",
+        "type": "image",
+        "place": "hero",
+        "hint": "게임 분위기를 대표하는 한 장면"
+      },
+      {
+        "key": "meta",
+        "label": "기본 정보",
+        "type": "keyvalue",
+        "place": "hero",
+        "keys": [
+          "장르",
+          "플랫폼",
+          "타깃",
+          "플레이 타임",
+          "레퍼런스"
+        ]
+      },
+      {
+        "key": "pitch",
+        "label": "게임 소개",
+        "type": "text",
+        "hint": "플레이어가 무엇을 하고 왜 재미있는지 3문장 이내."
+      },
+      {
+        "key": "pillars",
+        "label": "핵심 재미 (Pillars)",
+        "type": "cards",
+        "max": 3,
+        "hint": "title은 2~6단어, desc는 1문장."
+      },
+      {
+        "key": "coreLoop",
+        "label": "코어 루프",
+        "type": "flow",
+        "max": 5,
+        "hint": "반복되는 플레이 단계. 각 단계는 2~6단어."
+      },
+      {
+        "key": "features",
+        "label": "주요 기능",
+        "type": "cards",
+        "max": 4,
+        "hint": "title은 기능 이름, desc는 1문장."
+      },
+      {
+        "key": "usp",
+        "label": "차별점",
+        "type": "list",
+        "max": 3,
+        "hint": "경쟁작 대비 다른 점. 각 1문장."
+      },
+      {
+        "key": "risks",
+        "label": "리스크와 대응",
+        "type": "table",
+        "columns": [
+          "리스크",
+          "대응"
+        ],
+        "max": 4
+      },
+      {
+        "key": "moodboard",
+        "label": "무드보드",
+        "type": "gallery",
+        "max": 4,
+        "hint": "참고 이미지 아이디어"
+      }
+    ]
+  },
+  {
+    "id": "world",
+    "name": "세계관 위키",
+    "folder": "세계관",
+    "icon": "◎",
+    "color": "#1f9d74",
+    "layout": "wiki",
+    "description": "지역, 국가, 세력 같은 설정을 위키 페이지로. 인포박스, 연표, 관계 포함.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "이 대상이 무엇인지 2문장 이내."
+      },
+      {
+        "key": "cover",
+        "label": "대표 이미지",
+        "type": "image",
+        "place": "infobox",
+        "hint": "풍경이나 상징물"
+      },
+      {
+        "key": "info",
+        "label": "정보",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "유형",
+          "위치",
+          "시대",
+          "규모",
+          "통치",
+          "주요 세력"
+        ]
+      },
+      {
+        "key": "overview",
+        "label": "개요",
+        "type": "longtext",
+        "hint": "2~3 문단. 문단당 3문장 이내."
+      },
+      {
+        "key": "geography",
+        "label": "지리와 환경",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "culture",
+        "label": "문화와 사회",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "history",
+        "label": "연표",
+        "type": "timeline",
+        "max": 6
+      },
+      {
+        "key": "factions",
+        "label": "세력",
+        "type": "table",
+        "columns": [
+          "세력",
+          "성향",
+          "목표"
+        ],
+        "max": 5
+      },
+      {
+        "key": "relations",
+        "label": "관련 문서",
+        "type": "relations",
+        "max": 6
+      },
+      {
+        "key": "gallery",
+        "label": "이미지",
+        "type": "gallery",
+        "max": 4
+      },
+      {
+        "key": "trivia",
+        "label": "여담",
+        "type": "list",
+        "max": 3
+      }
+    ]
+  },
+  {
+    "id": "character",
+    "name": "캐릭터 시트",
+    "folder": "캐릭터",
+    "icon": "☺",
+    "color": "#e0663a",
+    "layout": "wiki",
+    "description": "캐릭터 설정. 프로필, 성격, 배경, 능력, 관계, 대사.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "누구이고 이야기에서 어떤 역할인지 2문장 이내."
+      },
+      {
+        "key": "portrait",
+        "label": "초상",
+        "type": "image",
+        "place": "infobox",
+        "hint": "캐릭터 전신 또는 상반신"
+      },
+      {
+        "key": "profile",
+        "label": "프로필",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "나이",
+          "종족",
+          "소속",
+          "역할",
+          "무기",
+          "성우 톤"
+        ]
+      },
+      {
+        "key": "personality",
+        "label": "성격 키워드",
+        "type": "tags",
+        "max": 5
+      },
+      {
+        "key": "appearance",
+        "label": "외형",
+        "type": "text",
+        "hint": "3문장 이내. 실루엣, 색, 특징적 소품."
+      },
+      {
+        "key": "background",
+        "label": "배경 이야기",
+        "type": "longtext",
+        "hint": "2~3 문단."
+      },
+      {
+        "key": "abilities",
+        "label": "능력",
+        "type": "table",
+        "columns": [
+          "이름",
+          "유형",
+          "설명"
+        ],
+        "max": 5
+      },
+      {
+        "key": "relations",
+        "label": "관계",
+        "type": "relations",
+        "max": 6
+      },
+      {
+        "key": "quotes",
+        "label": "대표 대사",
+        "type": "list",
+        "max": 3
+      },
+      {
+        "key": "gallery",
+        "label": "설정화",
+        "type": "gallery",
+        "max": 4
+      }
+    ]
+  },
+  {
+    "id": "level",
+    "name": "레벨 디자인",
+    "folder": "레벨",
+    "icon": "▦",
+    "color": "#2f7fd8",
+    "layout": "wiki",
+    "description": "맵 한 개의 목표, 흐름, 구역, 적 배치, 보상.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "어떤 레벨이고 플레이어가 무엇을 경험하는지 2문장."
+      },
+      {
+        "key": "map",
+        "label": "맵",
+        "type": "image",
+        "place": "infobox",
+        "hint": "탑뷰 맵 스케치"
+      },
+      {
+        "key": "info",
+        "label": "정보",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "위치",
+          "권장 레벨",
+          "플레이 타임",
+          "난이도",
+          "테마"
+        ]
+      },
+      {
+        "key": "goal",
+        "label": "레벨 목표",
+        "type": "text",
+        "hint": "플레이어 목표와 디자인 의도. 3문장 이내."
+      },
+      {
+        "key": "beats",
+        "label": "진행 흐름",
+        "type": "flow",
+        "max": 6,
+        "hint": "플레이 순서대로 각 2~6단어."
+      },
+      {
+        "key": "zones",
+        "label": "구역",
+        "type": "table",
+        "columns": [
+          "구역",
+          "내용",
+          "기믹 / 적"
+        ],
+        "max": 6
+      },
+      {
+        "key": "enemies",
+        "label": "등장 적",
+        "type": "table",
+        "columns": [
+          "적",
+          "수",
+          "역할"
+        ],
+        "max": 6
+      },
+      {
+        "key": "rewards",
+        "label": "보상",
+        "type": "table",
+        "columns": [
+          "보상",
+          "획득 조건"
+        ],
+        "max": 5
+      },
+      {
+        "key": "notes",
+        "label": "디자인 메모",
+        "type": "list",
+        "max": 4
+      },
+      {
+        "key": "gallery",
+        "label": "레퍼런스",
+        "type": "gallery",
+        "max": 4
+      }
+    ]
+  },
+  {
+    "id": "quest",
+    "name": "퀘스트 / 콘텐츠",
+    "folder": "퀘스트",
+    "icon": "❖",
+    "color": "#c2410c",
+    "layout": "wiki",
+    "description": "퀘스트나 이벤트 콘텐츠. 개요, 단계, 등장인물, 보상.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "무슨 콘텐츠인지 2문장."
+      },
+      {
+        "key": "cover",
+        "label": "대표 이미지",
+        "type": "image",
+        "place": "infobox"
+      },
+      {
+        "key": "info",
+        "label": "정보",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "유형",
+          "시작 조건",
+          "의뢰인",
+          "장소",
+          "반복 여부",
+          "예상 시간"
+        ]
+      },
+      {
+        "key": "story",
+        "label": "줄거리",
+        "type": "longtext",
+        "hint": "1~2 문단."
+      },
+      {
+        "key": "steps",
+        "label": "진행 단계",
+        "type": "flow",
+        "max": 6
+      },
+      {
+        "key": "detail",
+        "label": "단계별 상세",
+        "type": "table",
+        "columns": [
+          "단계",
+          "목표",
+          "완료 조건"
+        ],
+        "max": 6
+      },
+      {
+        "key": "relations",
+        "label": "등장 인물 / 장소",
+        "type": "relations",
+        "max": 6
+      },
+      {
+        "key": "rewards",
+        "label": "보상",
+        "type": "table",
+        "columns": [
+          "보상",
+          "수량",
+          "비고"
+        ],
+        "max": 5
+      },
+      {
+        "key": "gallery",
+        "label": "이미지",
+        "type": "gallery",
+        "max": 4
+      }
+    ]
+  },
+  {
+    "id": "note",
+    "name": "자유 문서",
+    "folder": "문서",
+    "icon": "✎",
+    "color": "#6b7280",
+    "layout": "wiki",
+    "description": "양식 없이 자유롭게. 회의록, 메모, 직접 쓴 md 파일도 여기로.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "2문장 이내."
+      },
+      {
+        "key": "body",
+        "label": "본문",
+        "type": "longtext",
+        "hint": "소제목은 ### 로. 여러 문단."
+      },
+      {
+        "key": "gallery",
+        "label": "이미지",
+        "type": "gallery",
+        "max": 6
+      }
+    ]
+  }
+]
