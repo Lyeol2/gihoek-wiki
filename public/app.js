@@ -340,6 +340,18 @@ function renderProjects() {
 const repoSlug = text => (text || '').normalize('NFKD').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').toLowerCase().slice(0, 60);
 const defaultRepo = text => repoSlug(text) || `wiki-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`;
 
+// 받은 초대가 있으면 어디에 있든 알려준다 (수락은 첫 화면의 'GitHub에서 가져오기')
+async function checkInvites() {
+  try {
+    const g = state.git || await loadGit();
+    if (!g.ready) return;
+    const list = await api('git/invitations');
+    const link = $('#inviteLink');
+    link.hidden = !list.length;
+    if (list.length) link.textContent = `받은 초대 ${list.length}개 · 참여하기`;
+  } catch { /* 못 읽어도 괜찮다 */ }
+}
+
 async function loadGit() {
   try { state.git = await api('git'); } catch { state.git = { ready: false, hint: '' }; }
   return state.git;
@@ -528,8 +540,15 @@ function renderHome() {
   $('#revealBtn').onclick = () => papi('reveal', { method: 'POST', body: {} }).catch(e => toast(e.message, true));
   $('#projDelBtn').onclick = async () => {
     const name = info.name || state.project;
-    if (!confirm(`"${name}" 프로젝트를 삭제할까요?\n\n문서 ${state.docs.length}개가 목록에서 사라져요. 완전히 지우지는 않고 저장 폴더 안의 휴지통 폴더로 옮겨요.\nGitHub에 올린 레포는 그대로 남아요.`)) return;
+    if (!confirm(`"${name}" 프로젝트를 삭제할까요?\n\n문서 ${state.docs.length}개가 목록에서 사라져요. 이 컴퓨터에서는 완전히 지우지 않고 저장 폴더 안의 휴지통 폴더로 옮겨요.`)) return;
     try {
+      // GitHub에 올린 프로젝트면 레포까지 지울지 따로 한 번 더 묻는다 (이건 되돌릴 수 없다)
+      const st = await papi('git/status').catch(() => ({}));
+      if (st.slug && confirm(`GitHub 레포 ${st.slug} 도 같이 지울까요?\n\n[확인] 레포까지 완전히 삭제 — 팀원도 더 이상 쓸 수 없고 되돌릴 수 없어요.\n[취소] 레포는 남겨 두고 이 컴퓨터의 프로젝트만 삭제`)) {
+        if (!confirm(`정말 ${st.slug} 레포를 완전히 지울까요?\n이 작업은 되돌릴 수 없어요.`)) return;
+        try { await api(`projects/${enc(state.project)}/repo`, { method: 'DELETE' }); }
+        catch (e) { alert(`레포를 지우지 못해서 아무것도 삭제하지 않았어요.\n\n${e.message}`); return; }
+      }
       await api(`projects/${enc(state.project)}`, { method: 'DELETE' });
       try { localStorage.setItem('wiki.project', ''); } catch { /* 없음 */ }
       state.project = null; state.projectInfo = null;
@@ -1114,6 +1133,7 @@ async function boot() {
   // 윈도우 앱은 화면이 열려 있는 동안 서버를 켜 둔다
   checkUpdate();
   setInterval(checkUpdate, 3 * 3600 * 1000);
+  checkInvites();
   const ping = () => fetch('/api/ping').catch(() => {});
   setInterval(ping, 20000);
   document.addEventListener('visibilitychange', ping);

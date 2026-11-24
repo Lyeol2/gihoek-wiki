@@ -343,3 +343,22 @@ def my_projects(local_dirs):
             out.append({"repo": parts[0], "name": parts[1][len(DESC_PREFIX):].lstrip(": ").strip() or parts[0].split("/")[1],
                         "private": parts[2] == "true", "local": parts[0].lower() in have})
     return out
+
+
+def delete_repo(proj):
+    """GitHub 레포를 완전히 지운다 (되돌릴 수 없다). 레포 주인만 할 수 있다."""
+    need_ready()
+    slug = slug_of(remote_url(proj))
+    if not slug:
+        raise GitError("GitHub에 연결된 프로젝트가 아니에요.")
+    r = gh("repo", "delete", slug, "--yes", check=False, timeout=60)
+    if r.returncode != 0:
+        err = (r.stderr or "").strip()
+        if "delete_repo" in err:
+            raise GitError("레포를 지울 권한이 아직 없어요. 터미널에서 아래 명령을 한 번 실행한 뒤 다시 시도해 주세요.\n\n"
+                           "gh auth refresh -h github.com -s delete_repo")
+        if "403" in err or "admin" in err.lower():
+            raise GitError("레포 주인만 레포를 지울 수 있어요.")
+        raise GitError(err[-300:] or "레포를 지우지 못했어요.")
+    git(proj, "remote", "remove", "origin", check=False)
+    return slug

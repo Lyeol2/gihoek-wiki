@@ -1065,6 +1065,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(update_project(s[1], self.json_body()))
             if len(s) == 2 and method == "DELETE":
                 return self.send_json({"ok": True, "movedTo": delete_project(s[1])})
+            if len(s) == 3 and s[2] == "repo" and method == "DELETE":
+                return self.send_json({"ok": True, "deleted": gitsync.delete_repo(project_path(s[1]))})
 
         if head == "p" and len(s) >= 3:
             pid, what = s[1], s[2]

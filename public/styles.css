@@ -366,3 +366,6 @@ a.proj-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); bord
 .hist-what { flex: 1; color: var(--sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge-mini { flex: none; font-size: 11px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sub); }
 .version-bar { position: sticky; top: 10px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); font-size: 14px; }
+
+.invite-pill { display: block; box-sizing: border-box; text-decoration: none; background: #2e9e5b; margin-bottom: 8px; }
+.invite-pill[hidden] { display: none; }
