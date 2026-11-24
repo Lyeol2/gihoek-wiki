@@ -79,6 +79,11 @@ def run():
             open_window(url)
             return
         httpd, url = server.start()
+        if "--no-window" in sys.argv:  # 업데이트 직후: 열려 있던 창이 다시 붙는다
+            server.LAST_PING[0] = time.time()
+            wait_until_idle()
+            httpd.shutdown()
+            return
         for _ in range(50):
             if ping(url):
                 break

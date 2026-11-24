@@ -35,6 +35,8 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
+import updater
+
 FROZEN = getattr(sys, "frozen", False)          # PyInstaller로 묶인 배포판인지
 ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = getattr(sys, "_MEIPASS", ROOT)            # 코드와 화면 파일(public/)이 있는 곳
@@ -1012,6 +1014,11 @@ class Handler(BaseHTTPRequestHandler):
         if head == "ping":
             LAST_PING[0] = time.time()
             return self.send_json({"ok": True, "version": VERSION})
+
+        if head == "update":
+            if method == "POST":
+                updater.start_install(VERSION)
+            return self.send_json(updater.info(VERSION, force="check" in s[1:]))
 
         if head == "generate" and method == "POST":
             return self.send_json(generate(self.json_body()))

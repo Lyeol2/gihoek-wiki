@@ -190,6 +190,49 @@ async function loadAi() {
   $('#version').textContent = state.ai.version === 'dev' ? '개발 버전' : `v${state.ai.version}`;
 }
 
+/* ------------------------------------------------------------ 자동 업데이트 */
+
+async function checkUpdate() {
+  let u;
+  try { u = await api('update'); } catch { return; }
+  const btn = $('#updateBtn');
+  btn.hidden = !u.available;
+  if (!u.available) return;
+  btn.textContent = `새 버전 v${u.latest} · 업데이트`;
+  btn.onclick = () => installUpdate(u);
+}
+
+async function installUpdate(u) {
+  if (!u.canInstall) {
+    if (confirm(`${u.reason}\n\n릴리즈 페이지를 열까요?`)) window.open(u.url, '_blank');
+    return;
+  }
+  if (state.editing?.dirty && !confirm('저장하지 않은 편집 내용이 있어요. 그래도 업데이트할까요?')) return;
+  if (!confirm(`v${u.latest}로 업데이트할까요?\n내려받아 설치한 뒤 앱이 다시 열려요. 문서는 그대로 있어요.`)) return;
+  const label = { downloading: '새 버전을 내려받는 중', installing: '설치하는 중', restarting: '다시 여는 중' };
+  showOverlay('업데이트 준비 중');
+  clearInterval(overlayTimer);
+  $('#overlaySub').textContent = `v${u.current} → v${u.latest}`;
+  await api('update', { method: 'POST' }).catch(() => {});
+  let lost = 0;
+  const timer = setInterval(async () => {
+    try {
+      const s = await api('update');
+      if (s.current !== u.current) return location.reload();   // 새 버전 서버가 떴다
+      if (s.state === 'error') {
+        clearInterval(timer); hideOverlay();
+        if (confirm(`업데이트하지 못했어요.\n${s.error}\n\n릴리즈 페이지를 열까요?`)) window.open(u.url, '_blank');
+        return;
+      }
+      $('#overlayTitle').textContent = label[s.state] || '업데이트 중';
+    } catch {
+      // 서버가 꺼졌다 = 설치 중. 다시 뜰 때까지 기다린다 (맥은 앱 전체가 다시 열린다)
+      $('#overlayTitle').textContent = label.restarting;
+      if (++lost > 120) { clearInterval(timer); hideOverlay(); toast('앱을 다시 열어 주세요', true); }
+    }
+  }, 1000);
+}
+
 /* ------------------------------------------------------------ router */
 
 function parseHash() {
@@ -856,6 +899,8 @@ async function boot() {
   };
   window.addEventListener('hashchange', route);
   // 윈도우 앱은 화면이 열려 있는 동안 서버를 켜 둔다
+  checkUpdate();
+  setInterval(checkUpdate, 3 * 3600 * 1000);
   const ping = () => fetch('/api/ping').catch(() => {});
   setInterval(ping, 20000);
   document.addEventListener('visibilitychange', ping);
