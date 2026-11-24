@@ -153,7 +153,7 @@ def find_iscc():
 
 def build_windows(version):
     pyinstaller(version, ["--onedir", "--noconsole", "--name", "GihoekWiki",
-                          "--icon", os.path.join(ROOT, "assets", "icon.ico"), "--hidden-import", "launcher_win", "--hidden-import", "updater"])
+                          "--icon", os.path.join(ROOT, "assets", "icon.ico"), "--hidden-import", "launcher_win", "--hidden-import", "updater", "--hidden-import", "gitsync"])
     src = os.path.join(BUILD, "pyi", "GihoekWiki")
     out = []
 

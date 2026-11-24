@@ -35,6 +35,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
+import gitsync
 import updater
 
 FROZEN = getattr(sys, "frozen", False)          # PyInstaller로 묶인 배포판인지
@@ -496,7 +497,14 @@ def create_project(body):
         raise ValueError(f"'{pid}' 폴더가 이미 있어요")
     os.makedirs(os.path.join(p, "images"))
     write_project(p, name, body.get("description", ""))
-    return read_project(pid)
+    out = read_project(pid)
+    repo = body.get("repo")
+    if repo:  # 만들면서 바로 GitHub 비공개 레포로 올린다. 실패해도 프로젝트는 남는다.
+        try:
+            gitsync.publish(p, repo, f"기획위키 프로젝트: {name}")
+        except Exception as e:  # noqa: BLE001
+            out["gitError"] = str(e)
+    return out
 
 
 def update_project(pid, body):
@@ -955,7 +963,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_file(inside(os.path.realpath(PUBLIC), rel))
         except FileNotFoundError:
             self.send_json({"error": "찾을 수 없습니다"}, 404)
-        except (ValueError, json.JSONDecodeError) as e:
+        except (ValueError, json.JSONDecodeError, gitsync.GitError) as e:
             self.send_json({"error": str(e)}, 400)
         except Exception as e:  # noqa: BLE001
             self.send_json({"error": str(e)}, 500)
@@ -1001,6 +1009,24 @@ class Handler(BaseHTTPRequestHandler):
                 with open(os.path.join(proj, "images", fname), "wb") as f:
                     f.write(self.body())
                 return self.send_json({"url": f"/files/{pid}/images/{fname}"})
+            if what == "git":
+                proj = project_path(pid)
+                act = s[3] if len(s) > 3 else "status"
+                if method == "GET" and act in ("status", "fetch"):
+                    return self.send_json(gitsync.status(proj, fetch=act == "fetch"))
+                if method == "GET" and act == "members":
+                    return self.send_json(gitsync.members(proj))
+                if method == "POST":
+                    body = self.json_body()
+                    if act == "publish":
+                        info = read_project(pid)
+                        return self.send_json(gitsync.publish(proj, body.get("repo"), f"기획위키 프로젝트: {info['name']}"))
+                    if act == "sync":
+                        res = gitsync.sync(proj)
+                        res["status"] = gitsync.status(proj)
+                        return self.send_json(res)
+                    if act == "invite":
+                        return self.send_json(gitsync.invite(proj, body.get("user")))
             if what == "reveal" and method == "POST":
                 proj = project_path(pid)
                 target = proj
@@ -1014,6 +1040,20 @@ class Handler(BaseHTTPRequestHandler):
         if head == "ping":
             LAST_PING[0] = time.time()
             return self.send_json({"ok": True, "version": VERSION})
+
+        if head == "git":
+            act = s[1] if len(s) > 1 else ""
+            if method == "GET" and not act:
+                return self.send_json(gitsync.tools())
+            if method == "GET" and act == "invitations":
+                return self.send_json(gitsync.invitations())
+            if method == "POST" and act == "join":
+                body = self.json_body()
+                dest = gitsync.join(projects_dir(), body.get("repo"), body.get("invitation"))
+                pid = os.path.basename(dest)
+                if not os.path.isfile(os.path.join(dest, "project.md")):
+                    write_project(dest, pid, "")
+                return self.send_json(read_project(pid), 201)
 
         if head == "update":
             if method == "POST":

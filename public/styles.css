@@ -337,3 +337,20 @@ a.proj-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); bord
   .hero { min-height: 300px; }
   .wl { color: inherit; border: 0; }
 }
+
+/* ---------- 팀과 같이 쓰기 (Git) */
+.team-sec:empty { display: none; }
+.team-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 14px; }
+.team-bar .grow { flex: 1; min-width: 220px; }
+.team-panel { margin-top: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 12px; }
+.team-panel p { margin: 0; }
+.row-form { display: flex; gap: 8px; align-items: center; }
+.row-form .input { width: auto; flex: 1; min-width: 180px; padding: 7px 10px; font-size: 14px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+.dot.ok { background: #2e9e5b; }
+.dot.warn { background: #e08a1e; }
+.check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--sub); margin-bottom: 8px; cursor: pointer; }
+.invite-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.invite-list:empty { display: none; }
+.invite { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 14px; }
+.btn:disabled { opacity: .6; cursor: default; }

@@ -299,22 +299,162 @@ function renderProjects() {
           <div class="proj-card-name">＋ 새 프로젝트</div>
           <input class="input" id="pName" placeholder="프로젝트 이름 (예: 13번째 종)" required maxlength="80">
           <textarea class="input" id="pDesc" rows="3" placeholder="한두 줄 소개 (선택). 장르, 분위기, 핵심 콘셉트를 적어두면 AI가 문서를 쓸 때 참고해요."></textarea>
-          <button class="btn primary" type="submit">만들기</button>
+          <div id="pRepoBox" hidden>
+            <label class="check"><input type="checkbox" id="pRepoOn" checked> GitHub 비공개 레포로 올려 팀과 같이 쓰기</label>
+            <input class="input" id="pRepo" placeholder="레포 이름 (영문, 예: bell-13-wiki)" maxlength="60" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*">
+          </div>
+          <button class="btn primary" type="submit" id="pSubmit">만들기</button>
         </form>
         ${cards}
       </div>
+    </section>
+    <section class="home-sec" id="joinSec" hidden>
+      <h2>팀 프로젝트 받기 <span class="muted">팀원이 GitHub에 올린 프로젝트를 내 컴퓨터로 가져와요</span></h2>
+      <div id="inviteList" class="invite-list"></div>
+      <form class="row-form" id="joinForm">
+        <input class="input" id="joinRepo" placeholder="레포 주소 (예: Lyeol2/bell-13-wiki)" required>
+        <button class="btn" type="submit">가져오기</button>
+      </form>
     </section>
     <p class="muted small">저장 위치: <code>${esc(state.ai?.projectsDir || '')}</code></p>
   </div>`;
 
   $('#newProj').onsubmit = async e => {
     e.preventDefault();
+    const withRepo = !$('#pRepoBox').hidden && $('#pRepoOn').checked;
+    const btn = $('#pSubmit');
+    btn.disabled = true; btn.textContent = withRepo ? 'GitHub에 올리는 중…' : '만드는 중…';
     try {
-      const p = await api('projects', { method: 'POST', body: { name: $('#pName').value, description: $('#pDesc').value } });
+      const p = await api('projects', { method: 'POST', body: {
+        name: $('#pName').value, description: $('#pDesc').value, repo: withRepo ? $('#pRepo').value.trim() : '' } });
+      if (p.gitError) alert(`프로젝트는 만들었지만 GitHub에 올리지 못했어요.\n${p.gitError}\n\n프로젝트 홈에서 다시 올릴 수 있어요.`);
+      await refreshProjects();
       location.hash = projHref(p.id);
-    } catch (err) { toast(err.message, true); }
+    } catch (err) { toast(err.message, true); btn.disabled = false; btn.textContent = '만들기'; }
   };
   if (!state.projects.length) $('#pName').focus();
+  setupProjectGit();
+}
+
+const repoSlug = text => (text || '').normalize('NFKD').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').toLowerCase().slice(0, 60);
+const defaultRepo = text => repoSlug(text) || `wiki-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}`;
+
+async function loadGit() {
+  try { state.git = await api('git'); } catch { state.git = { ready: false, hint: '' }; }
+  return state.git;
+}
+
+async function setupProjectGit() {
+  const g = state.git || await loadGit();
+  if (!g.ready || !$('#pRepoBox')) return;
+  $('#pRepoBox').hidden = false;
+  $('#joinSec').hidden = false;
+  const sync = () => { $('#pRepo').hidden = !$('#pRepoOn').checked; $('#pRepo').required = $('#pRepoOn').checked; };
+  $('#pRepoOn').onchange = sync; sync();
+  let touched = false;
+  $('#pRepo').oninput = () => { touched = true; };
+  $('#pRepo').value = defaultRepo('');
+  $('#pName').oninput = () => { if (!touched) $('#pRepo').value = defaultRepo($('#pName').value); };
+
+  const join = async (repo, invitation, btn) => {
+    const old = btn.textContent; btn.disabled = true; btn.textContent = '가져오는 중…';
+    try {
+      const p = await api('git/join', { method: 'POST', body: { repo, invitation } });
+      await refreshProjects();
+      location.hash = projHref(p.id);
+    } catch (err) { toast(err.message, true); btn.disabled = false; btn.textContent = old; }
+  };
+  $('#joinForm').onsubmit = e => { e.preventDefault(); join($('#joinRepo').value, null, e.target.querySelector('button')); };
+  try {
+    const list = await api('git/invitations');
+    if (!$('#inviteList')) return;
+    $('#inviteList').innerHTML = list.map(i => `<div class="invite">
+      <div class="grow"><b>${esc(i.repo)}</b><span class="muted"> · ${esc(i.from)} 님이 초대했어요</span></div>
+      <button class="btn primary small" data-repo="${esc(i.repo)}" data-inv="${esc(i.id)}">참여하기</button></div>`).join('');
+    $('#inviteList').querySelectorAll('button').forEach(b => { b.onclick = () => join(b.dataset.repo, b.dataset.inv, b); });
+  } catch { /* 초대 목록은 못 읽어도 괜찮다 */ }
+}
+
+/* ------------------------------------------------------------ 팀과 같이 쓰기 (Git) */
+
+async function renderTeam(fetchRemote) {
+  if (!$('#teamSec')) return;
+  const pid = state.project;
+  const g = state.git || await loadGit();
+  let st;
+  try { st = await papi(fetchRemote ? 'git/fetch' : 'git/status'); } catch { return; }
+  const box = $('#teamSec');   // 기다리는 동안 화면이 다시 그려졌을 수 있으니 지금 있는 칸을 잡는다
+  if (pid !== state.project || !box) return;
+
+  if (!st.repo || !st.remote) {
+    box.innerHTML = g.ready ? `<div class="team-bar">
+        <div class="grow"><b>팀과 같이 쓰기</b><span class="muted"> · GitHub 비공개 레포로 올리면 팀원을 초대해서 같이 고칠 수 있어요</span></div>
+        <form class="row-form" id="pubForm">
+          <input class="input" id="pubRepo" value="${esc(defaultRepo(state.project))}" placeholder="레포 이름 (영문)" required maxlength="60">
+          <button class="btn primary small" type="submit">GitHub에 올리기</button>
+        </form></div>`
+      : `<div class="team-bar"><div class="grow"><b>팀과 같이 쓰기</b><span class="muted"> · ${esc(g.hint || '')}</span></div></div>`;
+    if (g.ready) $('#pubForm').onsubmit = async e => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = '올리는 중…';
+      try { await papi('git/publish', { method: 'POST', body: { repo: $('#pubRepo').value.trim() } }); toast('GitHub에 올렸어요'); renderTeam(); }
+      catch (err) { toast(err.message, true); btn.disabled = false; btn.textContent = 'GitHub에 올리기'; }
+    };
+    return;
+  }
+
+  const parts = [];
+  if (st.changes) parts.push(`내 변경 ${st.changes}개`);
+  if (st.ahead) parts.push(`안 올린 저장 ${st.ahead}개`);
+  if (st.behind) parts.push(`팀원 변경 ${st.behind}개`);
+  const dirty = parts.length > 0;
+  box.innerHTML = `<div class="team-bar">
+      <div class="grow">
+        <b><span class="dot ${dirty ? 'warn' : 'ok'}"></span>${dirty ? esc(parts.join(' · ')) : '팀과 같은 상태예요'}</b>
+        <span class="muted"> · <a href="${esc(st.url)}" target="_blank" rel="noopener">${esc(st.slug)}</a>${st.last ? ` · 마지막 저장 ${esc(st.last.by)}, ${fmtDate(st.last.at)}` : ''}</span>
+      </div>
+      <button class="btn ${dirty ? 'primary' : ''} small" id="syncBtn">동기화</button>
+      <button class="btn small" id="teamBtn">팀원</button>
+    </div>
+    <div class="team-panel" id="teamPanel" hidden></div>`;
+
+  $('#syncBtn').onclick = async () => {
+    if (!g.ready) return toast(g.hint, true);
+    const btn = $('#syncBtn'); btn.disabled = true; btn.textContent = '동기화 중…';
+    try {
+      const r = await papi('git/sync', { method: 'POST', body: {} });
+      await refreshDocs();
+      const msg = [r.pulled && `받음 ${r.pulled}`, r.pushed && `올림 ${r.pushed}`].filter(Boolean).join(' · ') || '이미 최신이에요';
+      if (r.conflicts.length) {
+        alert(`팀원과 같은 문서를 고쳤어요. 팀원 버전을 받았고, 내 버전은 따로 저장해 뒀어요.\n\n${r.conflicts.map(c => `· ${c.copy}`).join('\n')}\n\n두 문서를 비교해서 합친 뒤 '내 버전' 문서를 지워 주세요.`);
+      }
+      toast(`동기화 완료 · ${msg}`);
+      if (state.project === pid && $('#teamSec')) renderHome();
+    } catch (err) { alert(`동기화하지 못했어요.\n${err.message}`); btn.disabled = false; btn.textContent = '동기화'; }
+  };
+
+  $('#teamBtn').onclick = async () => {
+    const panel = $('#teamPanel');
+    panel.hidden = !panel.hidden;
+    if (panel.hidden) return;
+    const draw = m => {
+      panel.innerHTML = `<div class="chips">${m.members.map(u => `<span class="chip">@${esc(u)}</span>`).join('')}${
+        m.pending.map(u => `<span class="chip muted">@${esc(u)} · 초대 중</span>`).join('')}</div>
+        <form class="row-form" id="invForm">
+          <input class="input" id="invUser" placeholder="초대할 팀원의 GitHub 아이디" required>
+          <button class="btn primary small" type="submit">초대</button>
+        </form>
+        <p class="muted small">초대받은 팀원은 기획위키 첫 화면의 <b>팀 프로젝트 받기</b>에서 <b>참여하기</b>를 누르면 돼요. (GitHub CLI 로그인 필요)</p>`;
+      $('#invForm').onsubmit = async e => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button'); btn.disabled = true;
+        try { const user = $('#invUser').value; draw(await papi('git/invite', { method: 'POST', body: { user } })); toast(`${user} 님을 초대했어요`); }
+        catch (err) { toast(err.message, true); btn.disabled = false; }
+      };
+    };
+    panel.innerHTML = '<p class="muted small">불러오는 중…</p>';
+    try { draw(await papi('git/members')); } catch (err) { panel.innerHTML = `<p class="error-box">${esc(err.message)}</p>`; }
+  };
 }
 
 /* ------------------------------------------------------------ project home */
@@ -367,6 +507,7 @@ function renderHome() {
         <button class="btn small" id="revealBtn">폴더 열기</button>
       </div>
     </header>
+    <section class="home-sec team-sec" id="teamSec"></section>
     <section class="home-sec"><h2>새로 만들기</h2><div class="tpl-grid">${tplCards}</div></section>
     ${wantedHtml}
     <section class="home-sec"><h2>문서 <span class="muted">${state.docs.length}개</span></h2>
@@ -375,6 +516,7 @@ function renderHome() {
   </div>`;
 
   $('#revealBtn').onclick = () => papi('reveal', { method: 'POST', body: {} }).catch(e => toast(e.message, true));
+  renderTeam().then(() => renderTeam(true));   // 먼저 내 컴퓨터 상태를 보여주고, 이어서 GitHub의 새 변경을 확인한다
   const toggle = on => { $('#descView').hidden = on; $('#descEdit').hidden = !on; $('#descBtn').hidden = on; if (on) $('#descText').focus(); };
   $('#descBtn').onclick = () => toggle(true);
   $('#descCancel').onclick = () => toggle(false);
