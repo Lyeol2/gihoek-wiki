@@ -324,3 +324,22 @@ def join(projects_dir, repo, invitation=None):
             raise GitError("레포를 찾을 수 없어요. 주소가 맞는지, 초대를 받았는지 확인해 주세요.") from None
         raise
     return dest
+
+
+DESC_PREFIX = "기획위키 프로젝트"
+
+
+def my_projects(local_dirs):
+    """내 GitHub 계정(내가 만들었거나 초대받은 레포) 중 기획위키 프로젝트. 이미 받은 것은 local=True."""
+    if not tools()["ready"]:
+        return []
+    have = {slug_of(remote_url(d)).lower() for d in local_dirs if is_repo(d)}
+    r = gh("api", "user/repos?per_page=100&affiliation=owner,collaborator&sort=updated",
+           "--jq", '.[] | [.full_name, (.description // ""), (.private|tostring)] | @tsv', check=False, timeout=30)
+    out = []
+    for line in (r.stdout if r.returncode == 0 else "").splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[1].startswith(DESC_PREFIX):
+            out.append({"repo": parts[0], "name": parts[1][len(DESC_PREFIX):].lstrip(": ").strip() or parts[0].split("/")[1],
+                        "private": parts[2] == "true", "local": parts[0].lower() in have})
+    return out

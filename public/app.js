@@ -309,8 +309,9 @@ function renderProjects() {
       </div>
     </section>
     <section class="home-sec" id="joinSec" hidden>
-      <h2>팀 프로젝트 받기 <span class="muted">팀원이 GitHub에 올린 프로젝트를 내 컴퓨터로 가져와요</span></h2>
+      <h2>GitHub에서 가져오기 <span class="muted">초대받았거나 내 GitHub에 있는 프로젝트를 이 컴퓨터로 가져와요</span></h2>
       <div id="inviteList" class="invite-list"></div>
+      <div id="repoList" class="invite-list"></div>
       <form class="row-form" id="joinForm">
         <input class="input" id="joinRepo" placeholder="레포 주소 (예: Lyeol2/bell-13-wiki)" required>
         <button class="btn" type="submit">가져오기</button>
@@ -373,6 +374,14 @@ async function setupProjectGit() {
       <button class="btn primary small" data-repo="${esc(i.repo)}" data-inv="${esc(i.id)}">참여하기</button></div>`).join('');
     $('#inviteList').querySelectorAll('button').forEach(b => { b.onclick = () => join(b.dataset.repo, b.dataset.inv, b); });
   } catch { /* 초대 목록은 못 읽어도 괜찮다 */ }
+  try {
+    const repos = (await api('git/repos')).filter(r => !r.local);
+    if (!$('#repoList')) return;
+    $('#repoList').innerHTML = repos.map(r => `<div class="invite">
+      <div class="grow"><b>${esc(r.name)}</b><span class="muted"> · ${esc(r.repo)} · 내 GitHub에 있는 프로젝트</span></div>
+      <button class="btn small" data-repo="${esc(r.repo)}">가져오기</button></div>`).join('');
+    $('#repoList').querySelectorAll('button').forEach(b => { b.onclick = () => join(b.dataset.repo, null, b); });
+  } catch { /* 목록은 못 읽어도 주소로 가져올 수 있다 */ }
 }
 
 /* ------------------------------------------------------------ 팀과 같이 쓰기 (Git) */
@@ -444,7 +453,7 @@ async function renderTeam(fetchRemote) {
           <input class="input" id="invUser" placeholder="초대할 팀원의 GitHub 아이디" required>
           <button class="btn primary small" type="submit">초대</button>
         </form>
-        <p class="muted small">초대받은 팀원은 기획위키 첫 화면의 <b>팀 프로젝트 받기</b>에서 <b>참여하기</b>를 누르면 돼요. (GitHub CLI 로그인 필요)</p>`;
+        <p class="muted small">초대받은 팀원은 기획위키 첫 화면의 <b>GitHub에서 가져오기</b>에서 <b>참여하기</b>를 누르면 돼요. (GitHub CLI 로그인 필요)</p>`;
       $('#invForm').onsubmit = async e => {
         e.preventDefault();
         const btn = e.target.querySelector('button'); btn.disabled = true;
@@ -505,6 +514,7 @@ function renderHome() {
       <div class="proj-actions">
         <button class="btn small" id="descBtn">소개 고치기</button>
         <button class="btn small" id="revealBtn">폴더 열기</button>
+        <button class="btn small ghost danger" id="projDelBtn">프로젝트 삭제</button>
       </div>
     </header>
     <section class="home-sec team-sec" id="teamSec"></section>
@@ -516,6 +526,18 @@ function renderHome() {
   </div>`;
 
   $('#revealBtn').onclick = () => papi('reveal', { method: 'POST', body: {} }).catch(e => toast(e.message, true));
+  $('#projDelBtn').onclick = async () => {
+    const name = info.name || state.project;
+    if (!confirm(`"${name}" 프로젝트를 삭제할까요?\n\n문서 ${state.docs.length}개가 목록에서 사라져요. 완전히 지우지는 않고 저장 폴더 안의 휴지통 폴더로 옮겨요.\nGitHub에 올린 레포는 그대로 남아요.`)) return;
+    try {
+      await api(`projects/${enc(state.project)}`, { method: 'DELETE' });
+      try { localStorage.setItem('wiki.project', ''); } catch { /* 없음 */ }
+      state.project = null; state.projectInfo = null;
+      await refreshProjects();
+      toast(`"${name}" 프로젝트를 삭제했어요`);
+      location.hash = '#/';
+    } catch (e) { toast(e.message, true); }
+  };
   renderTeam().then(() => renderTeam(true));   // 먼저 내 컴퓨터 상태를 보여주고, 이어서 GitHub의 새 변경을 확인한다
   const toggle = on => { $('#descView').hidden = on; $('#descEdit').hidden = !on; $('#descBtn').hidden = on; if (on) $('#descText').focus(); };
   $('#descBtn').onclick = () => toggle(true);
@@ -713,6 +735,7 @@ async function renderDoc(id) {
       <button class="btn" id="refineBtn">✦ AI로 다듬기</button>
       <a class="btn" href="${editHref(doc.id)}">편집</a>
       <button class="btn" id="printBtn">PDF</button>
+      <button class="btn" id="histBtn" title="이 문서가 바뀌어 온 기록">기록</button>
       <button class="btn ghost" id="fileBtn" title="Finder에서 md 파일 보기">파일</button>
       <button class="btn ghost danger" id="delBtn" title="삭제">삭제</button>
     </div>
@@ -721,6 +744,7 @@ async function renderDoc(id) {
       <div class="refine-row"><span class="muted small">이미지는 그대로 유지돼요. 마음에 안 들면 되돌릴 수 있어요.</span>
         <button class="btn primary" id="refineGo">다듬기</button></div>
     </div>
+    <div id="histBox" class="hist no-print" hidden></div>
     ${t.layout === 'proposal' ? proposalLayout(t, doc) : wikiLayout(t, doc)}
     ${backlinks.length ? `<section class="backlinks no-print"><h3>이 문서를 언급한 문서</h3>
       <div class="chips">${backlinks.map(d => `<a class="chip" href="${docHref(d.id)}">${esc(d.title)}</a>`).join('')}</div></section>` : ''}
@@ -738,6 +762,22 @@ async function renderDoc(id) {
 
   $('#statusSel').onchange = async e => reopen(await save({ status: e.target.value }, '상태 변경됨'));
   $('#printBtn').onclick = () => window.print();
+  $('#histBtn').onclick = async () => {
+    const box = $('#histBox');
+    box.hidden = !box.hidden;
+    if (box.hidden) return;
+    box.innerHTML = '<p class="muted small">기록을 불러오는 중…</p>';
+    try {
+      const list = await papi(`history/${enc(doc.id)}`);
+      box.innerHTML = list.length ? `<div class="hist-head"><b>문서 기록</b><span class="muted small"> · 눌러서 그때의 문서를 볼 수 있어요</span></div>
+        <div class="hist-list">${list.map((v, i) => `<button class="hist-item" data-i="${i}">
+          <span class="hist-when">${fmtTime(v.at)}</span>
+          <span class="hist-what">${v.source === 'git' ? `${esc(v.by)} · ${esc(v.message)}` : '내 컴퓨터에서 저장'}</span>
+          <span class="badge-mini">${v.source === 'git' ? 'GitHub' : '저장'}</span></button>`).join('')}</div>`
+        : '<p class="muted small">아직 기록이 없어요. 문서를 고쳐서 저장하면 이전 내용이 여기에 남아요.</p>';
+      box.querySelectorAll('.hist-item').forEach(b => { b.onclick = () => renderVersion(doc, list[+b.dataset.i]); });
+    } catch (e) { box.innerHTML = `<p class="error-box">${esc(e.message)}</p>`; }
+  };
   $('#fileBtn').onclick = () => papi('reveal', { method: 'POST', body: { doc: doc.id } }).catch(e => toast(e.message, true));
   $('#delBtn').onclick = async () => {
     if (!confirm(`"${doc.title}" 문서를 삭제할까요?\n(프로젝트 폴더의 .wiki/trash로 옮겨져요)`)) return;
@@ -776,6 +816,37 @@ async function renderDoc(id) {
   bindDrops($('#main'), onSlot);
   $$('.zoomable').forEach(img => img.onclick = () => openLightbox(img.src));
   $$('[data-anchor]').forEach(a => a.onclick = e => { e.preventDefault(); $(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' }); });
+}
+
+const fmtTime = ms => new Date(ms).toLocaleString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+/* 과거 버전 보기: 읽기 전용으로 그때의 문서를 보여주고, 원하면 그 버전으로 되돌린다 */
+async function renderVersion(current, v) {
+  let old;
+  try { old = await papi(`history/${enc(current.id)}/${enc(v.id)}`); } catch (e) { return toast(e.message, true); }
+  const t = state.tpl[old.template] || state.tpl.note;
+  $('#main').innerHTML = `<div class="page doc-page">
+    <div class="version-bar no-print">
+      <div class="grow"><b>과거 버전을 보는 중</b><span class="muted"> · ${fmtTime(v.at)}${v.source === 'git' ? ` · ${esc(v.by)}` : ''}</span></div>
+      <button class="btn primary small" id="restoreBtn">이 버전으로 되돌리기</button>
+      <button class="btn small" id="backBtn">현재 문서로</button>
+    </div>
+    ${t.layout === 'proposal' ? proposalLayout(t, old) : wikiLayout(t, old)}
+  </div>`;
+  window.scrollTo(0, 0);
+  $('#backBtn').onclick = () => renderDoc(current.id);
+  $('#restoreBtn').onclick = async () => {
+    if (!confirm('이 버전으로 되돌릴까요?\n지금 내용도 기록에 남아서 다시 돌아올 수 있어요.')) return;
+    const body = { ...current, title: old.title, fields: old.fields, extra: old.extra, status: old.status, template: old.template };
+    delete body.previous;
+    try {
+      const saved = await docApi(current.id, { method: 'PUT', body });
+      await refreshDocs();
+      toast('되돌렸어요');
+      if (saved.id === current.id) renderDoc(saved.id); else location.hash = docHref(saved.id);
+    } catch (e) { toast(e.message, true); }
+  };
+  $$('.zoomable').forEach(img => img.onclick = () => openLightbox(img.src));
 }
 
 function mergeImages(t, next, prev) {

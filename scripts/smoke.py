@@ -97,10 +97,21 @@ def main():
         check(renamed["id"] == "문서/2차 회의록" and not os.path.exists(md_path), "제목 바꾸면 파일 이름도 바뀜")
         check(renamed["fields"]["gallery"][0]["src"] == img["url"], "이미지 경로 유지")
 
+        rid = quote(renamed["id"], safe="")
+        renamed["fields"]["body"] = "고친 본문"
+        call("PUT", f"/api/p/{pid}/docs/{rid}", renamed)
+        hist = call("GET", f"/api/p/{pid}/history/{rid}")
+        check(len(hist) >= 1 and hist[0]["source"] == "local", f"문서 기록 {len(hist)}개")
+        old = call("GET", f"/api/p/{pid}/history/{rid}/{quote(hist[0]['id'], safe='')}")
+        check(old["fields"]["body"].startswith("본문 첫 줄"), "과거 버전 읽기")
+
         call("DELETE", f"/api/p/{pid}/docs/{quote(renamed['id'], safe='')}")
         trash = os.path.join(home, "projects", "테스트 프로젝트", ".wiki", "trash")
         check(len(os.listdir(trash)) == 1, "삭제하면 휴지통으로")
         check(call("GET", "/api/ping")["ok"] is True, "ping")
+        call("DELETE", f"/api/projects/{pid}")
+        check(call("GET", "/api/projects") == [] and len(os.listdir(os.path.join(home, "projects", ".trash"))) == 1,
+              "프로젝트 삭제하면 .trash로")
         print("통과")
     finally:
         proc.terminate()

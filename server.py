@@ -513,6 +513,16 @@ def update_project(pid, body):
     return read_project(pid)
 
 
+def delete_project(pid):
+    """완전히 지우지 않고 저장 폴더의 .trash로 옮긴다. GitHub 레포는 건드리지 않는다."""
+    p = project_path(pid)
+    trash = os.path.join(projects_dir(), ".trash")
+    os.makedirs(trash, exist_ok=True)
+    dst = os.path.join(trash, f"{os.path.basename(p)} {time.strftime('%y%m%d-%H%M%S')}")
+    shutil.move(p, dst)
+    return dst
+
+
 def reveal(path, select=False):
     """Finder / 탐색기에서 폴더를 열거나(select=True면) 파일을 선택해 보여준다."""
     if sys.platform == "darwin":
@@ -544,6 +554,73 @@ def doc_path(proj, doc_id):
 
 def history_path(proj, doc_id):
     return os.path.join(proj, ".wiki", "history", doc_id.replace("/", "__") + ".json")
+
+
+MAX_VERSIONS = 60
+
+
+def versions_dir(proj, doc_id):
+    return os.path.join(proj, ".wiki", "versions", doc_id.replace("/", "__"))
+
+
+def snapshot(proj, doc_id, new_text=None):
+    """덮어쓰기 전의 md를 .wiki/versions에 남긴다 (문서 기록)."""
+    path = doc_path(proj, doc_id)
+    if not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        old = f.read()
+    if new_text is not None and old == new_text:
+        return
+    d = versions_dir(proj, doc_id)
+    os.makedirs(d, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(os.path.getmtime(path)))
+    with open(os.path.join(d, stamp + ".md"), "w", encoding="utf-8") as f:
+        f.write(old)
+    for name in sorted(os.listdir(d))[:-MAX_VERSIONS]:
+        os.remove(os.path.join(d, name))
+
+
+def doc_history(pid, doc_id):
+    """내 컴퓨터에 남긴 저장 기록 + (GitHub에 올린 프로젝트면) 팀의 커밋 기록."""
+    proj = project_path(pid)
+    doc_path(proj, doc_id)
+    out = []
+    d = versions_dir(proj, doc_id)
+    if os.path.isdir(d):
+        for name in os.listdir(d):
+            try:
+                at = time.mktime(time.strptime(name[:-3], "%Y%m%d-%H%M%S"))
+            except ValueError:
+                continue
+            out.append({"id": "local:" + name[:-3], "at": int(at * 1000), "source": "local"})
+    if gitsync.is_repo(proj):
+        r = gitsync.git(proj, "log", "-n", "60", "--format=%H%x09%ct%x09%an%x09%s", "--", doc_id + ".md", check=False)
+        for line in (r.stdout if r.returncode == 0 else "").splitlines():
+            parts = line.split("\t", 3)
+            if len(parts) == 4:
+                out.append({"id": "git:" + parts[0], "at": int(parts[1]) * 1000, "source": "git", "by": parts[2], "message": parts[3]})
+    out.sort(key=lambda v: v["at"], reverse=True)
+    return out
+
+
+def doc_version(pid, doc_id, vid):
+    proj = project_path(pid)
+    doc_path(proj, doc_id)
+    kind, _, key = vid.partition(":")
+    if kind == "local" and re.fullmatch(r"\d{8}-\d{6}", key):
+        with open(os.path.join(versions_dir(proj, doc_id), key + ".md"), encoding="utf-8") as f:
+            text = f.read()
+    elif kind == "git" and re.fullmatch(r"[0-9a-f]{7,64}", key):
+        r = gitsync.git(proj, "show", f"{key}:{doc_id}.md", check=False)
+        if r.returncode != 0:
+            raise FileNotFoundError(vid)
+        text = r.stdout
+    else:
+        raise ValueError("잘못된 버전")
+    doc = md_to_doc(text, pid, doc_id, load_templates())
+    doc["version"] = vid
+    return doc
 
 
 def read_doc(pid, doc_id, templates=None):
@@ -582,14 +659,20 @@ def save_doc(pid, doc, old_id=None):
         except FileNotFoundError:
             pass
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    text = doc_to_md(doc, t, pid, os.path.dirname(new_id))
+    if old_id:
+        snapshot(proj, old_id, text if old_id == new_id else None)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(doc_to_md(doc, t, pid, os.path.dirname(new_id)))
+        f.write(text)
     os.replace(tmp, path)
 
     hp = history_path(proj, new_id)
     if old_id and old_id != new_id:
         os.remove(doc_path(proj, old_id))
+        old_vd, new_vd = versions_dir(proj, old_id), versions_dir(proj, new_id)
+        if os.path.isdir(old_vd) and not os.path.exists(new_vd):
+            os.replace(old_vd, new_vd)
         old_hp = history_path(proj, old_id)
         if os.path.exists(old_hp):
             os.replace(old_hp, hp) if not os.path.exists(hp) else os.remove(old_hp)
@@ -980,6 +1063,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(read_project(s[1]))
             if len(s) == 2 and method == "PUT":
                 return self.send_json(update_project(s[1], self.json_body()))
+            if len(s) == 2 and method == "DELETE":
+                return self.send_json({"ok": True, "movedTo": delete_project(s[1])})
 
         if head == "p" and len(s) >= 3:
             pid, what = s[1], s[2]
@@ -1009,6 +1094,10 @@ class Handler(BaseHTTPRequestHandler):
                 with open(os.path.join(proj, "images", fname), "wb") as f:
                     f.write(self.body())
                 return self.send_json({"url": f"/files/{pid}/images/{fname}"})
+            if what == "history" and method == "GET" and len(s) in (4, 5):
+                if len(s) == 4:
+                    return self.send_json(doc_history(pid, s[3]))
+                return self.send_json(doc_version(pid, s[3], s[4]))
             if what == "git":
                 proj = project_path(pid)
                 act = s[3] if len(s) > 3 else "status"
@@ -1045,6 +1134,10 @@ class Handler(BaseHTTPRequestHandler):
             act = s[1] if len(s) > 1 else ""
             if method == "GET" and not act:
                 return self.send_json(gitsync.tools())
+            if method == "GET" and act == "repos":
+                base = projects_dir()
+                local = [os.path.join(base, n) for n in os.listdir(base) if not n.startswith(".")]
+                return self.send_json(gitsync.my_projects([p for p in local if os.path.isdir(p)]))
             if method == "GET" and act == "invitations":
                 return self.send_json(gitsync.invitations())
             if method == "POST" and act == "join":
