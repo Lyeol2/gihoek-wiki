@@ -207,23 +207,35 @@ async function loadAi() {
 
 /* ------------------------------------------------------------ 자동 업데이트 */
 
-async function checkUpdate() {
+// atLaunch: 앱을 막 켰을 때. 이때는 하던 작업이 없으니 묻지 않고 바로 설치한다.
+// 켜 둔 채로 새 버전이 나오면 작업을 끊지 않도록 버튼만 보여준다.
+async function checkUpdate(atLaunch) {
   let u;
   try { u = await api('update'); } catch { return; }
   const btn = $('#updateBtn');
   btn.hidden = !u.available;
   if (!u.available) return;
+  if (atLaunch === true && u.auto && u.canInstall) {
+    let tried = '';
+    try { tried = localStorage.getItem('wiki.autoUpdateTried') || ''; } catch { /* 없음 */ }
+    if (tried !== u.latest) {   // 같은 버전을 자동으로 두 번 시도하지 않는다 (실패했을 때 무한 반복 방지)
+      try { localStorage.setItem('wiki.autoUpdateTried', u.latest); } catch { /* 없음 */ }
+      return installUpdate(u, true);
+    }
+  }
   btn.textContent = `새 버전 v${u.latest} · 업데이트`;
   btn.onclick = () => installUpdate(u);
 }
 
-async function installUpdate(u) {
+async function installUpdate(u, silent) {
   if (!u.canInstall) {
     if (confirm(`${u.reason}\n\n릴리즈 페이지를 열까요?`)) window.open(u.url, '_blank');
     return;
   }
-  if (state.editing?.dirty && !confirm('저장하지 않은 편집 내용이 있어요. 그래도 업데이트할까요?')) return;
-  if (!confirm(`v${u.latest}로 업데이트할까요?\n내려받아 설치한 뒤 앱이 다시 열려요. 문서는 그대로 있어요.`)) return;
+  if (!silent) {
+    if (state.editing?.dirty && !confirm('저장하지 않은 편집 내용이 있어요. 그래도 업데이트할까요?')) return;
+    if (!confirm(`v${u.latest}로 업데이트할까요?\n내려받아 설치한 뒤 앱이 다시 열려요. 문서는 그대로 있어요.`)) return;
+  }
   const label = { downloading: '새 버전을 내려받는 중', installing: '설치하는 중', restarting: '다시 여는 중' };
   showOverlay('업데이트 준비 중');
   clearInterval(overlayTimer);
@@ -236,6 +248,7 @@ async function installUpdate(u) {
       if (s.current !== u.current) return location.reload();   // 새 버전 서버가 떴다
       if (s.state === 'error') {
         clearInterval(timer); hideOverlay();
+        if (silent) return toast(`자동 업데이트를 하지 못했어요. 왼쪽 아래 버튼으로 다시 시도할 수 있어요.`, true);
         if (confirm(`업데이트하지 못했어요.\n${s.error}\n\n릴리즈 페이지를 열까요?`)) window.open(u.url, '_blank');
         return;
       }
@@ -1178,8 +1191,8 @@ async function boot() {
     if (desc && !$('#descEdit').hidden) desc.click();
   });
   // 윈도우 앱은 화면이 열려 있는 동안 서버를 켜 둔다
-  checkUpdate();
-  setInterval(checkUpdate, 3 * 3600 * 1000);
+  checkUpdate(true);
+  setInterval(() => checkUpdate(false), 3 * 3600 * 1000);
   checkInvites();
   const ping = () => fetch('/api/ping').catch(() => {});
   setInterval(ping, 20000);

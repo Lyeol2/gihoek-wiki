@@ -84,6 +84,7 @@ os.makedirs(WORK, exist_ok=True)
 DEFAULT_CONFIG = {
     "port": 4317 if FROZEN else 4173,  # 배포판과 소스 실행본이 서로의 서버를 잡지 않게
     "projectsDir": "projects",
+    "autoUpdate": True,   # 앱을 켤 때 새 버전이 있으면 묻지 않고 받아서 설치한다
     "ai": {
         "provider": "claude",
         "timeoutSec": 300,
@@ -1181,7 +1182,9 @@ class Handler(BaseHTTPRequestHandler):
         if head == "update":
             if method == "POST":
                 updater.start_install(VERSION)
-            return self.send_json(updater.info(VERSION, force="check" in s[1:]))
+            out = updater.info(VERSION, force="check" in s[1:])
+            out["auto"] = bool(load_config().get("autoUpdate", True))
+            return self.send_json(out)
 
         if head == "generate" and method == "POST":
             return self.send_json(generate(self.json_body()))
