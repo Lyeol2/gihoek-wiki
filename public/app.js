@@ -998,7 +998,7 @@ async function renderEdit(id) {
         <span class="grow"></span>
         <span class="muted small" id="dirtyMark"></span>
         <a class="btn ghost" href="${docHref(doc.id)}">취소</a>
-        <button class="btn primary" id="saveBtn">저장</button>
+        <button class="btn primary" id="saveBtn" title="Ctrl+S (맥은 ⌘S)를 누르면 저장하고 계속 편집해요">저장</button>
       </div>
       <input class="input title-input" id="titleIn" value="${esc(doc.title || '')}" placeholder="제목">
       <p class="muted small">본문에서 <code>[[문서 이름]]</code>은 위키 링크, <code>**강조**</code>는 굵게. 이미지는 칸을 클릭하거나 끌어다 놓거나 ⌘V로 붙여넣어요.</p>
@@ -1071,17 +1071,23 @@ async function renderEdit(id) {
     bindSlots(main, onSlot, '.img-ed-thumb');
     bindDrops(main, onSlot);
     $$('.img-ed-thumb', main).forEach(el => el.addEventListener('mouseenter', () => (state.imageTarget = el)));
-    $('#saveBtn').onclick = async () => {
-      for (const f of t.fields) if (f.type === 'table' && doc.fields[f.key]) doc.fields[f.key] = doc.fields[f.key].filter(r => r.some(c => (c || '').trim()));
-      delete doc.previous; // 편집 저장은 되돌리기 기록을 건드리지 않는다
+    // 저장 버튼: 저장하고 문서 화면으로. Ctrl+S / ⌘S: 저장하고 계속 편집.
+    const saveDoc = async stay => {
+      const body = { ...doc, fields: { ...doc.fields } };
+      for (const f of t.fields) if (f.type === 'table' && body.fields[f.key]) body.fields[f.key] = body.fields[f.key].filter(r => r.some(c => (c || '').trim()));
+      if (!stay) doc.fields = body.fields;
+      delete body.previous; // 편집 저장은 되돌리기 기록을 건드리지 않는다
       try {
-        const saved = await docApi(doc.id, { method: 'PUT', body: doc });
+        const saved = await docApi(doc.id, { method: 'PUT', body });
         ed.dirty = false;
         await refreshDocs();
         toast('저장됨');
-        location.hash = docHref(saved.id);
+        if (!stay) location.hash = docHref(saved.id);
+        else if (saved.id !== doc.id) location.hash = editHref(saved.id);   // 제목을 바꿔서 파일 이름이 바뀐 경우
       } catch (e) { toast(e.message, true); }
     };
+    $('#saveBtn').onclick = () => saveDoc(false);
+    ed.save = () => saveDoc(true);
   }
 
   // ⌘V 이미지 붙여넣기 → 마지막으로 가리킨 이미지 칸, 없으면 첫 갤러리에 추가
@@ -1130,6 +1136,14 @@ async function boot() {
     toast(`AI: ${state.ai.providers.find(p => p.id === state.ai.provider).label}`);
   };
   window.addEventListener('hashchange', route);
+  // Ctrl+S (맥은 ⌘S): 편집 중이면 저장하고 계속 편집, 프로젝트 소개를 고치는 중이면 그걸 저장
+  window.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
+    e.preventDefault();
+    if (state.editing?.save && $('#saveBtn')) return state.editing.save();
+    const desc = $('#descSave');
+    if (desc && !$('#descEdit').hidden) desc.click();
+  });
   // 윈도우 앱은 화면이 열려 있는 동안 서버를 켜 둔다
   checkUpdate();
   setInterval(checkUpdate, 3 * 3600 * 1000);
