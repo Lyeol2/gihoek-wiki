@@ -141,7 +141,7 @@ function showOverlay(title) {
   const started = Date.now();
   const label = state.ai?.providers.find(p => p.id === state.ai.provider)?.label || 'AI';
   $('#overlayTitle').textContent = title || `${label}가 문서를 쓰는 중`;
-  const tick = () => ($('#overlaySub').textContent = `${Math.round((Date.now() - started) / 1000)}초 · 보통 20~60초 걸려요`);
+  const tick = () => ($('#overlaySub').textContent = `${Math.round((Date.now() - started) / 1000)}초 · 보통 20~60초, 링크를 읽으면 몇 분 걸려요`);
   tick();
   overlayTimer = setInterval(tick, 1000);
   $('#overlay').hidden = false;
