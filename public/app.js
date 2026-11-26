@@ -150,6 +150,10 @@ function hideOverlay() { clearInterval(overlayTimer); $('#overlay').hidden = tru
 
 /* ------------------------------------------------------------ sidebar */
 
+// 핵심 문서(프로젝트에 하나씩 두는 문서): 확정된 것을 앞에, 그다음 최근에 고친 순
+const coreDocs = t => state.docs.filter(d => d.template === t.id)
+  .sort((a, b) => (b.status === 'final') - (a.status === 'final') || (b.updatedAt || 0) - (a.updatedAt || 0));
+
 function renderNav() {
   const head = $('#projHead');
   if (!state.project) {
@@ -168,7 +172,18 @@ function renderNav() {
   const q = $('#search').value.trim().toLowerCase();
   const current = decodeURIComponent(location.hash.match(/\/doc\/([^/?]+)/)?.[1] || '');
   let html = `<a class="nav-item home-link ${parseHash().parts.length === 2 ? 'active' : ''}" href="${projHref()}">⌂ 프로젝트 홈</a>`;
+  const singles = state.templates.filter(t => t.single);
+  if (singles.length && !q) {
+    html += `<div class="nav-group"><div class="nav-head"><span class="ticon" style="--c:var(--accent)">★</span>핵심 문서</div>
+      ${singles.map(t => {
+        const ds = coreDocs(t);
+        return ds.length ? ds.map(d => `<a class="nav-item ${d.id === current ? 'active' : ''}" href="${docHref(d.id)}">
+            <span class="dot s-${d.status}"></span>${esc(ds.length > 1 ? d.title : t.name)}</a>`).join('')
+          : `<a class="nav-item nav-todo" href="${newHref({ template: t.id })}">＋ ${esc(t.name)}</a>`;
+      }).join('')}</div>`;
+  }
   for (const t of state.templates) {
+    if (t.single && !q) continue;
     const docs = state.docs.filter(d => d.template === t.id &&
       (!q || d.title.toLowerCase().includes(q) || (d.summary || '').toLowerCase().includes(q)));
     if (!docs.length && (q || t.id === 'note')) continue;
@@ -482,7 +497,23 @@ async function renderTeam(fetchRemote) {
 
 function renderHome() {
   const info = state.projectInfo || {};
-  const tplCards = state.templates.map(t => `
+  const coreHtml = state.templates.filter(t => t.single).map(t => {
+    const ds = coreDocs(t), d = ds[0];
+    return d ? `<a class="core-card done" href="${docHref(d.id)}" style="--c:${t.color}">
+        <span class="core-icon">${t.icon}</span>
+        <span class="core-name">${esc(t.name)}<span class="status s-${d.status}">${STATUS[d.status] || ''}</span></span>
+        <span class="core-desc">${esc(d.summary || d.title || '')}</span>
+        <span class="core-meta">${fmtDate(d.updatedAt)}${ds.length > 1 ? ` · 같은 문서 ${ds.length}개` : ''}</span></a>`
+      : `<a class="core-card" href="${newHref({ template: t.id })}" style="--c:${t.color}">
+        <span class="core-icon">${t.icon}</span>
+        <span class="core-name">${esc(t.name)}</span>
+        <span class="core-desc">${esc(t.description)}</span>
+        <span class="core-meta">＋ 만들기</span></a>`;
+  }).join('');
+  const coreCount = state.templates.filter(t => t.single && coreDocs(t).length).length;
+  const coreTotal = state.templates.filter(t => t.single).length;
+
+  const tplCards = state.templates.filter(t => !t.single).map(t => `
     <a class="tpl-card" href="${newHref({ template: t.id })}" style="--c:${t.color}">
       <span class="tpl-icon">${t.icon}</span>
       <span class="tpl-name">${esc(t.name)}</span>
@@ -530,7 +561,9 @@ function renderHome() {
       </div>
     </header>
     <section class="home-sec team-sec" id="teamSec"></section>
-    <section class="home-sec"><h2>새로 만들기</h2><div class="tpl-grid">${tplCards}</div></section>
+    <section class="home-sec"><h2>핵심 문서 <span class="muted">프로젝트에 하나씩 두는 기준 문서 · ${coreCount}/${coreTotal}</span></h2>
+      <div class="core-grid">${coreHtml}</div></section>
+    <section class="home-sec"><h2>새로 만들기 <span class="muted">필요한 만큼 여러 개</span></h2><div class="tpl-grid">${tplCards}</div></section>
     ${wantedHtml}
     <section class="home-sec"><h2>문서 <span class="muted">${state.docs.length}개</span></h2>
       ${docCards ? `<div class="doc-grid">${docCards}</div>` : '<p class="empty">아직 문서가 없어요. 위에서 양식을 골라 시작해보세요.</p>'}

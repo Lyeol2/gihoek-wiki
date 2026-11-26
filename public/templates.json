@@ -86,6 +86,384 @@
         "max": 4,
         "hint": "참고 이미지 아이디어"
       }
+    ],
+    "single": true
+  },
+  {
+    "id": "worldbible",
+    "name": "세계관 개요",
+    "folder": "핵심 문서",
+    "icon": "◐",
+    "color": "#0f8f8f",
+    "layout": "wiki",
+    "single": true,
+    "description": "이 세계의 큰 그림 한 장. 배경, 세계의 법칙, 세력 구도, 주요 지역, 연표.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "어떤 세계인지 2문장 이내."
+      },
+      {
+        "key": "cover",
+        "label": "대표 이미지",
+        "type": "image",
+        "place": "infobox",
+        "hint": "세계를 대표하는 풍경"
+      },
+      {
+        "key": "info",
+        "label": "기본 설정",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "시대",
+          "무대",
+          "기술 수준",
+          "분위기",
+          "핵심 갈등"
+        ]
+      },
+      {
+        "key": "premise",
+        "label": "배경",
+        "type": "longtext",
+        "hint": "지금 세계가 왜 이런 모습인지. 2~3 문단, 문단당 3문장 이내."
+      },
+      {
+        "key": "rules",
+        "label": "세계의 법칙",
+        "type": "cards",
+        "max": 4,
+        "hint": "이 세계에서만 통하는 규칙(마법, 기술, 금기). title은 2~6단어, desc는 1문장."
+      },
+      {
+        "key": "factions",
+        "label": "세력 구도",
+        "type": "table",
+        "columns": [
+          "세력",
+          "성향",
+          "목표",
+          "주인공과의 관계"
+        ],
+        "max": 6
+      },
+      {
+        "key": "places",
+        "label": "주요 지역",
+        "type": "table",
+        "columns": [
+          "지역",
+          "특징",
+          "게임에서의 역할"
+        ],
+        "max": 8
+      },
+      {
+        "key": "history",
+        "label": "연표",
+        "type": "timeline",
+        "max": 8
+      },
+      {
+        "key": "tone",
+        "label": "톤 앤 매너",
+        "type": "tags",
+        "max": 6
+      },
+      {
+        "key": "terms",
+        "label": "용어",
+        "type": "table",
+        "columns": [
+          "용어",
+          "뜻"
+        ],
+        "max": 8
+      },
+      {
+        "key": "relations",
+        "label": "관련 문서",
+        "type": "relations",
+        "max": 8
+      }
+    ]
+  },
+  {
+    "id": "systems",
+    "name": "게임 시스템 개요",
+    "folder": "핵심 문서",
+    "icon": "⚙",
+    "color": "#3b6fd4",
+    "layout": "wiki",
+    "single": true,
+    "description": "플레이가 어떻게 돌아가는지 한 장. 코어 루프, 조작, 주요 시스템, 성장, 자원.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "플레이어가 주로 무엇을 하는 게임인지 2문장 이내."
+      },
+      {
+        "key": "info",
+        "label": "기본 정보",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "시점",
+          "조작",
+          "세션 길이",
+          "전체 분량",
+          "난이도 방침"
+        ]
+      },
+      {
+        "key": "coreLoop",
+        "label": "코어 루프",
+        "type": "flow",
+        "max": 5,
+        "hint": "반복되는 플레이 단계. 각 단계는 2~6단어."
+      },
+      {
+        "key": "systems",
+        "label": "주요 시스템",
+        "type": "cards",
+        "max": 6,
+        "hint": "title은 시스템 이름, desc는 무엇을 하는지 1문장."
+      },
+      {
+        "key": "controls",
+        "label": "조작",
+        "type": "table",
+        "columns": [
+          "행동",
+          "입력",
+          "비고"
+        ],
+        "max": 8
+      },
+      {
+        "key": "progression",
+        "label": "성장과 진행",
+        "type": "list",
+        "max": 5,
+        "hint": "플레이어가 무엇을 얻고 어떻게 강해지거나 넓어지는지."
+      },
+      {
+        "key": "resources",
+        "label": "자원과 경제",
+        "type": "table",
+        "columns": [
+          "자원",
+          "얻는 곳",
+          "쓰는 곳"
+        ],
+        "max": 6
+      },
+      {
+        "key": "failure",
+        "label": "실패와 보상",
+        "type": "list",
+        "max": 4,
+        "hint": "죽거나 실패하면 어떻게 되는지, 잘하면 무엇을 받는지."
+      },
+      {
+        "key": "open",
+        "label": "아직 안 정한 것",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "gallery",
+        "label": "참고 이미지",
+        "type": "gallery",
+        "max": 4
+      }
+    ]
+  },
+  {
+    "id": "artbible",
+    "name": "아트·사운드 방향",
+    "folder": "핵심 문서",
+    "icon": "✿",
+    "color": "#c2478e",
+    "layout": "wiki",
+    "single": true,
+    "description": "보이는 것과 들리는 것의 기준. 키워드, 색, 캐릭터와 배경 스타일, UI, 사운드.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "한눈에 떠오르는 인상 2문장 이내."
+      },
+      {
+        "key": "cover",
+        "label": "대표 이미지",
+        "type": "image",
+        "place": "infobox",
+        "hint": "분위기를 대표하는 한 장"
+      },
+      {
+        "key": "info",
+        "label": "기본 방향",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "화풍",
+          "렌더링",
+          "카메라",
+          "주요 색",
+          "레퍼런스"
+        ]
+      },
+      {
+        "key": "keywords",
+        "label": "키워드",
+        "type": "tags",
+        "max": 6
+      },
+      {
+        "key": "palette",
+        "label": "색과 빛",
+        "type": "table",
+        "columns": [
+          "쓰임",
+          "색",
+          "느낌"
+        ],
+        "max": 6
+      },
+      {
+        "key": "characters",
+        "label": "캐릭터 스타일",
+        "type": "list",
+        "max": 5,
+        "hint": "비율, 실루엣, 디테일 수준, 금지 사항."
+      },
+      {
+        "key": "environment",
+        "label": "배경 스타일",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "ui",
+        "label": "UI",
+        "type": "list",
+        "max": 4
+      },
+      {
+        "key": "sound",
+        "label": "사운드와 음악",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "references",
+        "label": "레퍼런스",
+        "type": "table",
+        "columns": [
+          "작품",
+          "가져올 점"
+        ],
+        "max": 6
+      },
+      {
+        "key": "moodboard",
+        "label": "무드보드",
+        "type": "gallery",
+        "max": 8
+      }
+    ]
+  },
+  {
+    "id": "roadmap",
+    "name": "로드맵",
+    "folder": "핵심 문서",
+    "icon": "➤",
+    "color": "#b7791f",
+    "layout": "wiki",
+    "single": true,
+    "description": "언제까지 무엇을 만들지. 목표, 마일스톤, 이번 범위, 뺀 것, 리스크.",
+    "fields": [
+      {
+        "key": "summary",
+        "label": "요약",
+        "type": "text",
+        "place": "lead",
+        "hint": "지금 단계와 다음 목표 2문장 이내."
+      },
+      {
+        "key": "info",
+        "label": "현황",
+        "type": "keyvalue",
+        "place": "infobox",
+        "keys": [
+          "현재 단계",
+          "다음 마일스톤",
+          "목표 출시",
+          "팀 규모"
+        ]
+      },
+      {
+        "key": "goal",
+        "label": "목표",
+        "type": "text",
+        "hint": "이 프로젝트로 이루려는 것. 3문장 이내."
+      },
+      {
+        "key": "milestones",
+        "label": "마일스톤",
+        "type": "table",
+        "columns": [
+          "단계",
+          "기간",
+          "목표",
+          "산출물"
+        ],
+        "max": 8
+      },
+      {
+        "key": "scope",
+        "label": "이번 범위",
+        "type": "list",
+        "max": 6,
+        "hint": "다음 마일스톤까지 만들 것."
+      },
+      {
+        "key": "cut",
+        "label": "이번에 뺀 것",
+        "type": "list",
+        "max": 5
+      },
+      {
+        "key": "roles",
+        "label": "담당",
+        "type": "table",
+        "columns": [
+          "역할",
+          "담당자",
+          "맡은 일"
+        ],
+        "max": 6
+      },
+      {
+        "key": "risks",
+        "label": "리스크와 대응",
+        "type": "table",
+        "columns": [
+          "리스크",
+          "대응"
+        ],
+        "max": 5
+      }
     ]
   },
   {

@@ -369,3 +369,16 @@ a.proj-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); bord
 
 .invite-pill { display: block; box-sizing: border-box; text-decoration: none; background: #2e9e5b; margin-bottom: 8px; }
 .invite-pill[hidden] { display: none; }
+
+/* ---------- 핵심 문서 */
+.core-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.core-card { display: flex; flex-direction: column; gap: 5px; padding: 14px; border-radius: 12px; border: 1.5px dashed var(--line); text-decoration: none; color: var(--text); min-height: 118px; }
+.core-card:hover { border-color: var(--c); }
+.core-card.done { border-style: solid; background: var(--panel); border-left: 4px solid var(--c); }
+.core-icon { color: var(--c); font-size: 18px; }
+.core-name { font-weight: 800; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.core-desc { color: var(--sub); font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.core-meta { margin-top: auto; font-size: 12px; color: var(--sub); }
+.core-card:not(.done) .core-meta { color: var(--c); font-weight: 700; }
+.nav-todo { opacity: .55; }
+.nav-todo:hover { opacity: 1; }
