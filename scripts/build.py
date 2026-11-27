@@ -74,8 +74,39 @@ INFO_PLIST = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+# 서명한 앱은 '강화된 런타임'으로 돌아간다. 파이썬 실행 파일이 임시 폴더에 풀어 둔 라이브러리를 읽으려면 이 권한이 필요하다.
+ENTITLEMENTS = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+</dict>
+</plist>
+"""
+
+
+def notarize(dmg):
+    """애플 공증: 올려서 검사받고(몇 분), 통과 표식을 dmg에 붙인다. 환경 변수가 없으면 건너뛴다."""
+    apple_id, password, team = (os.environ.get(k, "").strip() for k in ("NOTARY_APPLE_ID", "NOTARY_PASSWORD", "NOTARY_TEAM_ID"))
+    if not (apple_id and password and team):
+        print("공증 건너뜀 (NOTARY_APPLE_ID / NOTARY_PASSWORD / NOTARY_TEAM_ID 없음)", flush=True)
+        return
+    print("$ xcrun notarytool submit … --wait", flush=True)   # 비밀번호가 로그에 찍히지 않게 명령은 출력하지 않는다
+    subprocess.run(["xcrun", "notarytool", "submit", dmg, "--apple-id", apple_id, "--password", password,
+                    "--team-id", team, "--wait"], check=True)
+    run(["xcrun", "stapler", "staple", dmg])
+
+
 def build_mac(version):
-    pyinstaller(version, ["--onefile", "--name", "wiki-server"])
+    # MAC_SIGN_IDENTITY (예: "Developer ID Application: 이름 (팀ID)")가 있으면 정식 서명, 없으면 임시 서명
+    identity = os.environ.get("MAC_SIGN_IDENTITY", "").strip()
+    ent = os.path.join(BUILD, "entitlements.plist")
+    with open(ent, "w", encoding="utf-8") as f:
+        f.write(ENTITLEMENTS)
+    sign = ["codesign", "--force", "--options", "runtime", "--timestamp", "--entitlements", ent, "-s", identity]
+    pyinstaller(version, ["--onefile", "--name", "wiki-server"] +
+                (["--codesign-identity", identity, "--osx-entitlements-file", ent] if identity else []))
     shell = os.path.join(BUILD, "GihoekWiki")
     run(["swiftc", "-O", "-swift-version", "5", os.path.join(ROOT, "macapp", "main.swift"), "-o", shell])
 
@@ -91,7 +122,12 @@ def build_mac(version):
         json.dump({"bundled": True, "port": RELEASE_PORT}, f)
     with open(os.path.join(app, "Contents", "Info.plist"), "w", encoding="utf-8") as f:
         f.write(INFO_PLIST.format(name=APP_NAME, bundle_id=BUNDLE_ID, version=version))
-    run(["codesign", "--force", "--deep", "-s", "-", app])
+    if identity:
+        run(sign + [os.path.join(macos, "wiki-server")])
+        run(sign + [app])
+        run(["codesign", "--verify", "--strict", "--deep", app])
+    else:
+        run(["codesign", "--force", "--deep", "-s", "-", app])
 
     stage = os.path.join(BUILD, "dmg")
     shutil.rmtree(stage, ignore_errors=True)
@@ -100,6 +136,9 @@ def build_mac(version):
     os.symlink("/Applications", os.path.join(stage, "Applications"))
     dmg = os.path.join(RELEASE, f"{SLUG}-{version}-mac.dmg")
     run(["hdiutil", "create", "-volname", APP_NAME, "-srcfolder", stage, "-ov", "-format", "UDZO", dmg])
+    if identity:
+        run(["codesign", "--force", "--timestamp", "-s", identity, dmg])
+        notarize(dmg)
     return [dmg]
 
 

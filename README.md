@@ -44,6 +44,21 @@ GitHub Actions가 맥 dmg와 윈도우 설치 파일을 빌드·테스트해서 
 - 직접 빌드: `pip install pyinstaller` 후 `python3 scripts/build.py --version 0.1.0` → `dist/release/`
 - 동작 확인: `python3 scripts/smoke.py` (소스), `python3 scripts/smoke.py --built` (빌드한 앱)
 
+## 맥 앱 서명과 공증 (Apple Developer)
+
+저장소 Secrets에 아래 값이 있으면 릴리즈 때 맥 앱을 **Developer ID로 서명하고 애플 공증**까지 받는다. 그러면 처음 열 때 경고가 뜨지 않는다.
+값이 없으면 지금처럼 임시 서명으로 빌드한다.
+
+| Secret | 내용 |
+|---|---|
+| `MAC_CERT_P12` | *Developer ID Application* 인증서를 내보낸 `.p12` 파일을 base64로 바꾼 글자 |
+| `MAC_CERT_PASSWORD` | `.p12`를 내보낼 때 정한 비밀번호 |
+| `NOTARY_APPLE_ID` | Apple Developer 계정 이메일 |
+| `NOTARY_PASSWORD` | account.apple.com에서 만든 **앱 암호** (Apple ID 비밀번호가 아니다) |
+| `NOTARY_TEAM_ID` | 팀 ID (10자리) |
+
+내 컴퓨터에서 서명해 빌드하려면 같은 이름의 환경 변수 `MAC_SIGN_IDENTITY`(인증서 이름)와 `NOTARY_*`를 주고 `scripts/build.py`를 돌린다.
+
 ## 소스로 실행 (개발용)
 
 필요한 것: Python 3, 그리고 `claude` 또는 `codex` CLI 로그인. 이 폴더의 `config.json`과 `projects/`를 쓴다.
