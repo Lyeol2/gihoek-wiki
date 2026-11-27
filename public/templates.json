@@ -651,7 +651,7 @@
     "icon": "▦",
     "color": "#2f7fd8",
     "layout": "wiki",
-    "description": "맵 한 개의 목표, 흐름, 구역, 적 배치, 보상.",
+    "description": "맵 한 개의 목표, 흐름, 지도와 플랫포밍 설계, 구역, 적 배치, 보상.",
     "fields": [
       {
         "key": "summary",
@@ -692,6 +692,20 @@
         "type": "flow",
         "max": 6,
         "hint": "플레이 순서대로 각 2~6단어."
+      },
+      {
+        "key": "layout",
+        "label": "지도 설계",
+        "type": "map",
+        "mode": "top",
+        "hint": "위에서 본 지도. 벽·길·문을 칠하고 시작, 목표, 적, 아이템을 놓아요."
+      },
+      {
+        "key": "platform",
+        "label": "플랫포밍 설계",
+        "type": "map",
+        "mode": "side",
+        "hint": "옆에서 본 구간. 땅과 발판을 놓으면 점프로 갈 수 있는지 검사해요."
       },
       {
         "key": "zones",

@@ -703,6 +703,7 @@ const VIEW = {
       <tbody>${v.map(r => `<tr>${(f.columns || r).map((_, i) => `<td>${inline(r[i] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`,
   timeline: v => `<ol class="timeline">${v.map(e => `<li><div class="tl-when">${inline(e.when)}</div><div class="tl-what">${inline(e.what)}</div></li>`).join('')}</ol>`,
   relations: v => `<div class="relations">${v.map(r => `<div class="rel">${wikiLink(stripLinks(r.target))}<span class="rel-what">${inline(r.relation)}</span></div>`).join('')}</div>`,
+  map: (v, f) => LevelMap.viewHtml(v, f),
   image: (v, f) => imgFigure(v, f.key, -1, 'wide'),
   gallery: (v, f) => `<div class="gallery">${(v || []).map((g, i) => imgFigure(g, f.key, i)).join('')}
       ${(v || []).length < (f.max || 8) ? `<button class="gallery-add" data-slot="${f.key}" data-idx="new">＋ 이미지 추가</button>` : ''}</div>`,
@@ -711,7 +712,7 @@ const VIEW = {
 function renderField(f, v) {
   if (f.type === 'gallery') return VIEW.gallery(v, f);
   if (f.type === 'image') return VIEW.image(v, f);
-  if (isEmpty(v)) return '';
+  if (isEmpty(v) || (f.type === 'map' && LevelMap.isBlank(v))) return '';
   return (VIEW[f.type] || VIEW.text)(v, f);
 }
 
@@ -917,7 +918,9 @@ async function renderVersion(current, v) {
 function mergeImages(t, next, prev) {
   const out = { ...next };
   for (const f of t.fields) {
-    if (f.type === 'image') {
+    if (f.type === 'map') {          // 맵은 AI가 건드리지 않는다
+      if (prev[f.key]) out[f.key] = prev[f.key]; else delete out[f.key];
+    } else if (f.type === 'image') {
       const p = prev[f.key] || {}, n = next[f.key] || {};
       out[f.key] = { ...n, src: p.src || n.src, caption: n.caption || p.caption, idea: n.idea || p.idea };
       if (!out[f.key].src) delete out[f.key].src;
@@ -1020,6 +1023,8 @@ function editorField(f, v) {
       <tbody>${rows.map((r, ri) => `<tr>${f.columns.map((_, ci) => `<td><input class="cell" data-key="${key}" data-r="${ri}" data-c="${ci}" value="${esc(r[ci] || '')}"></td>`).join('')}
         <td><button class="row-del" data-key="${key}" data-r="${ri}" title="행 삭제">×</button></td></tr>`).join('')}</tbody></table>
       <button class="btn ghost small" data-addrow="${key}">+ 행 추가</button></div>`;
+  } else if (f.type === 'map') {
+    body = `<div data-map="${key}"></div>`;
   } else if (f.type === 'image') {
     body = imageEditor(v, key, -1);
   } else if (f.type === 'gallery') {
@@ -1114,6 +1119,10 @@ async function renderEdit(id) {
         markDirty(); draw(); markDirty();
       }
     };
+    $$('[data-map]', main).forEach(el => {
+      const f = t.fields.find(x => x.key === el.dataset.map);
+      LevelMap.mount(el, doc.fields[f.key], f, v => { doc.fields[f.key] = v; markDirty(); });
+    });
     bindSlots(main, onSlot, '.img-ed-thumb');
     bindDrops(main, onSlot);
     $$('.img-ed-thumb', main).forEach(el => el.addEventListener('mouseenter', () => (state.imageTarget = el)));
@@ -1126,6 +1135,7 @@ async function renderEdit(id) {
       try {
         const saved = await docApi(doc.id, { method: 'PUT', body });
         ed.dirty = false;
+        if ($('#dirtyMark')) $('#dirtyMark').textContent = '';
         await refreshDocs();
         toast('저장됨');
         if (!stay) location.hash = docHref(saved.id);

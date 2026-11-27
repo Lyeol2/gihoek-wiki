@@ -88,6 +88,18 @@ def main():
             md = f.read()
         check("../images/" in md and "## " in md, "md 파일 저장 (이미지 상대 경로)")
 
+        side = ["........", "....==..", "........", "###..###"]
+        lv = call("POST", f"/api/p/{pid}/docs", {"template": "level", "title": "맵 시험", "status": "draft", "memo": "", "fields": {
+            "platform": {"mode": "side", "rows": side, "jump": {"h": 2, "d": 3},
+                         "markers": [{"x": 0, "y": 2, "kind": "start", "label": "", "note": ""},
+                                     {"x": 7, "y": 2, "kind": "goal", "label": "출구", "note": "문 — 열쇠 필요"}]}}})
+        lv = call("GET", f"/api/p/{pid}/docs/{quote(lv['id'], safe='')}")
+        pm = lv["fields"].get("platform") or {}
+        check(pm.get("rows") == side and pm.get("jump") == {"h": 2, "d": 3}, "레벨 맵이 md로 저장되고 그대로 읽힘")
+        check([(m["kind"], m["x"], m["y"], m["label"], m["note"]) for m in pm.get("markers", [])] ==
+              [("start", 0, 2, "", ""), ("goal", 7, 2, "출구", "문 — 열쇠 필요")], "맵 표시(시작·목표)가 그대로 읽힘")
+        call("DELETE", f"/api/p/{pid}/docs/{quote(lv['id'], safe='')}")
+
         docs = call("GET", f"/api/p/{pid}/docs")
         check(len(docs) == 1 and docs[0]["links"] == ["벨모어"], "문서 목록과 링크")
 
@@ -107,7 +119,7 @@ def main():
 
         call("DELETE", f"/api/p/{pid}/docs/{quote(renamed['id'], safe='')}")
         trash = os.path.join(home, "projects", "테스트 프로젝트", ".wiki", "trash")
-        check(len(os.listdir(trash)) == 1, "삭제하면 휴지통으로")
+        check(len(os.listdir(trash)) == 2, "삭제하면 휴지통으로")
         check(call("GET", "/api/ping")["ok"] is True, "ping")
         call("DELETE", f"/api/projects/{pid}")
         check(call("GET", "/api/projects") == [] and len(os.listdir(os.path.join(home, "projects", ".trash"))) == 1,

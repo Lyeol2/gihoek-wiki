@@ -311,8 +311,70 @@ def split_row(line):
     return [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line)]
 
 
+# 레벨 맵: 칸은 글자 그림으로, 표시는 번호 목록으로 적는다. 메모장으로 열어도 읽고 고칠 수 있다.
+MAP_TILES = {"top": ".o#:+~^*x", "side": ".#=mbH^~"}
+MAP_KINDS = {"start": "시작", "goal": "목표", "enemy": "적", "boss": "보스", "item": "아이템",
+             "npc": "NPC", "save": "체크포인트", "note": "메모"}
+MAP_MARK_RE = re.compile(r"^\d+[.)]\s+\*\*(.+?)\*\*\s*\((\d+)\s*,\s*(\d+)\)\s*(.*)$")
+
+
+def map_md(f, v):
+    if not isinstance(v, dict):
+        return ""
+    mode = "side" if f.get("mode") == "side" else "top"
+    rows = [str(r) for r in (v.get("rows") or [])]
+    marks = [m for m in (v.get("markers") or []) if isinstance(m, dict)]
+    if not marks and all(set(r) <= {"."} for r in rows):
+        return ""
+    out = ["```map", f"mode: {mode}"]
+    if mode == "side":
+        j = v.get("jump") or {}
+        out.append(f"jump: {int(j.get('h') or 3)} {int(j.get('d') or 4)}")
+    out += rows + ["```"]
+    for i, m in enumerate(marks):   # 좌표는 (가로, 세로), 왼쪽 위가 (1,1)
+        line = f"{i + 1}. **{MAP_KINDS.get(m.get('kind'), '메모')}** ({int(m.get('x') or 0) + 1},{int(m.get('y') or 0) + 1})"
+        label, note = one_line(m.get("label")), one_line(m.get("note"))
+        out.append(line + (f" {label}" if label else "") + (f" — {note}" if note else ""))
+    return "\n".join(out)
+
+
+def map_from(f, text):
+    mode = "side" if f.get("mode") == "side" else "top"
+    names = {v: k for k, v in MAP_KINDS.items()}
+    rows, marks, jump, inside = [], [], None, False
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("```"):
+            inside = not inside
+            continue
+        if inside:
+            m = re.match(r"^(mode|jump):\s+(.+)$", s)
+            if m:
+                nums = re.findall(r"\d+", m.group(2))
+                if m.group(1) == "jump" and len(nums) >= 2:
+                    jump = {"h": int(nums[0]), "d": int(nums[1])}
+            elif s:
+                rows.append("".join(c if c in MAP_TILES[mode] else "." for c in s)[:80])
+            continue
+        m = MAP_MARK_RE.match(s)
+        if m:
+            rest = m.group(4).strip()
+            label, _, note = (("", "", rest[1:]) if rest[:1] in "—–" else rest.partition(" — "))
+            marks.append({"kind": names.get(m.group(1).strip(), "note"), "x": int(m.group(2)) - 1, "y": int(m.group(3)) - 1,
+                          "label": label.strip(), "note": note.strip()})
+    rows = rows[:40]
+    w = max([len(r) for r in rows] or [0])
+    out = {"mode": mode, "rows": [r.ljust(w, ".") for r in rows],
+           "markers": [m for m in marks if 0 <= m["x"] < w and 0 <= m["y"] < len(rows)]}
+    if mode == "side":
+        out["jump"] = jump or {"h": 3, "d": 4}
+    return out
+
+
 def field_md(f, v, pid, ddir):
     t = f["type"]
+    if t == "map":
+        return map_md(f, v)
     if t in ("text", "longtext"):
         return str(v).strip()
     if t in ("list", "tags"):
@@ -345,6 +407,8 @@ def field_md(f, v, pid, ddir):
 def field_from(f, text, pid, ddir):
     t = f["type"]
     text = text.strip("\n")
+    if t == "map":
+        return map_from(f, text)
     if t in ("text", "longtext"):
         return text.strip()
     if t in ("list", "tags", "flow"):
@@ -834,6 +898,9 @@ def strip_images(fields, template):
     out = dict(fields or {})
     for f in template["fields"]:
         v = out.get(f["key"])
+        if f["type"] == "map":      # 맵은 사람이 그린다. AI에 보내지 않고, 다듬은 뒤에도 그대로 둔다.
+            out.pop(f["key"], None)
+            continue
         if f["type"] == "image" and isinstance(v, dict):
             out[f["key"]] = {k: v.get(k, "") for k in ("caption", "idea")}
         elif f["type"] == "gallery" and isinstance(v, list):
@@ -845,7 +912,7 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 
 def build_prompt(template, memo, title, known_names, project, current=None, instruction="", links=False):
-    specs = "\n".join(field_spec(f) for f in template["fields"])
+    specs = "\n".join(field_spec(f) for f in template["fields"] if f["type"] != "map")
     known = ", ".join(known_names[:250]) or "(아직 없음)"
     parts = [
         f'너는 게임 기획 문서를 쓰는 시니어 게임 기획자다. "{template["name"]}" 양식을 채운다.',
