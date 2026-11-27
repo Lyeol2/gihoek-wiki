@@ -1166,6 +1166,40 @@ async function renderEdit(id) {
   draw();
 }
 
+/* ------------------------------------------------------------ 터미널 AI 연결 (MCP) */
+
+async function openMcp() {
+  const dlg = $('#mcpDlg');
+  const draw = (s, busy) => {
+    dlg.innerHTML = `<h2>터미널 AI 연결</h2>
+      <p class="muted small">연결하면 터미널에서 쓰는 Claude Code나 Codex가 이 위키의 문서를 직접 찾아 읽고, 만들고, 고칠 수 있어요.
+        앱이 꺼져 있어도 돼요. 고친 문서는 앱의 <b>기록</b>에서 되돌릴 수 있어요.</p>
+      ${['claude', 'codex'].map(k => { const t = s[k]; return `<div class="mcp-row">
+        <div class="grow"><b>${t.label}</b> <span class="muted small">${!t.installed ? '설치 안 됨' : t.connected ? '연결됨' : '연결 안 됨'}</span></div>
+        ${t.installed ? `<button class="btn small ${t.connected ? '' : 'primary'}" data-mcp="${k}" data-on="${t.connected ? 0 : 1}" ${busy ? 'disabled' : ''}>${t.connected ? '연결 끊기' : '연결'}</button>` : ''}
+      </div>`; }).join('')}
+      <div class="mcp-help small">
+        <div class="muted">연결한 뒤 새로 연 터미널 AI에게 이렇게 말해 보세요.</div>
+        <ul><li>"기획위키 Project_Z에서 세계관 문서들 읽고 설정 충돌 찾아줘"</li>
+          <li>"이 회의록으로 기획위키에 퀘스트 문서 만들어줘"</li>
+          <li>"기획위키 레벨 문서대로 이 씬 배치 만들어줘"</li></ul>
+      </div>
+      <div class="actions"><button class="btn" id="mcpClose">닫기</button></div>`;
+    $('#mcpClose').onclick = () => dlg.close();
+    $$('[data-mcp]', dlg).forEach(b => b.onclick = async () => {
+      draw(s, true);
+      try {
+        s = await api('mcp', { method: 'POST', body: { target: b.dataset.mcp, on: b.dataset.on === '1' } });
+        toast(b.dataset.on === '1' ? `${s[b.dataset.mcp].label}에 연결했어요. 새로 연 세션부터 보여요.` : '연결을 끊었어요');
+      } catch (e) { toast(e.message, true); }
+      draw(s, false);
+    });
+  };
+  dlg.innerHTML = '<p class="muted">확인하는 중…</p>';
+  dlg.showModal();
+  try { draw(await api('mcp')); } catch (e) { dlg.close(); toast(e.message, true); }
+}
+
 /* ------------------------------------------------------------ boot */
 
 // 맥 앱 메뉴에서 부르는 함수
@@ -1186,6 +1220,7 @@ async function boot() {
     if (last && state.projects.some(p => p.id === last)) location.replace(projHref(last));
   }
   $('#search').addEventListener('input', renderNav);
+  $('#mcpBtn').onclick = openMcp;
   $('#newBtn').onclick = () => window.wiki.newDoc();
   $('#aiSelect').onchange = async e => {
     state.ai = await api('config', { method: 'PUT', body: { provider: e.target.value } });

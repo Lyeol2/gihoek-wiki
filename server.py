@@ -1256,6 +1256,13 @@ class Handler(BaseHTTPRequestHandler):
         if head == "generate" and method == "POST":
             return self.send_json(generate(self.json_body()))
 
+        if head == "mcp":   # 터미널 AI에 위키 연결 (GET 상태, POST {target, on})
+            import wikimcp
+            if method == "POST":
+                b = self.json_body()
+                return self.send_json(wikimcp.connect(b.get("target"), b.get("on", True) is not False))
+            return self.send_json(wikimcp.registered())
+
         if head == "config":
             cfg = load_config()
             if method == "PUT":
@@ -1331,6 +1338,10 @@ def start(port=None):
 
 
 def main():
+    if "--mcp" in sys.argv:   # 터미널 AI(Claude Code / Codex)용 MCP 서버. 창도 웹 서버도 띄우지 않는다.
+        sys.modules.setdefault("server", sys.modules[__name__])
+        import wikimcp
+        return wikimcp.run()
     if FROZEN and os.name == "nt" and "--serve" not in sys.argv:
         import launcher_win  # 윈도우 배포판: 서버 + 앱 창
         return launcher_win.run()

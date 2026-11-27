@@ -105,7 +105,7 @@ def build_mac(version):
     with open(ent, "w", encoding="utf-8") as f:
         f.write(ENTITLEMENTS)
     sign = ["codesign", "--force", "--options", "runtime", "--timestamp", "--entitlements", ent, "-s", identity]
-    pyinstaller(version, ["--onefile", "--name", "wiki-server"] +
+    pyinstaller(version, ["--onefile", "--name", "wiki-server", "--hidden-import", "wikimcp"] +
                 (["--codesign-identity", identity, "--osx-entitlements-file", ent] if identity else []))
     shell = os.path.join(BUILD, "GihoekWiki")
     run(["swiftc", "-O", "-swift-version", "5", os.path.join(ROOT, "macapp", "main.swift"), "-o", shell])
@@ -192,7 +192,7 @@ def find_iscc():
 
 def build_windows(version):
     pyinstaller(version, ["--onedir", "--noconsole", "--name", "GihoekWiki",
-                          "--icon", os.path.join(ROOT, "assets", "icon.ico"), "--hidden-import", "launcher_win", "--hidden-import", "updater", "--hidden-import", "gitsync"])
+                          "--icon", os.path.join(ROOT, "assets", "icon.ico"), "--hidden-import", "launcher_win", "--hidden-import", "wikimcp", "--hidden-import", "updater", "--hidden-import", "gitsync"])
     src = os.path.join(BUILD, "pyi", "GihoekWiki")
     out = []
 

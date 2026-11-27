@@ -105,6 +105,16 @@ python3 server.py --open
 - 맵은 사람이 그린다. AI로 작성·다듬기는 맵을 건드리지 않는다.
 - 다른 양식에 넣으려면 `templates.json`의 항목에 `"type": "map", "mode": "top"`(지도) 또는 `"side"`(플랫포밍).
 
+## 터미널 AI 연결 (Claude Code · Codex)
+
+왼쪽 아래 **터미널 AI 연결**을 누르고 Claude Code나 Codex 옆의 **연결**을 누르면, 터미널에서 쓰는 AI가 위키 문서를 직접 찾아 읽고, 만들고, 고칠 수 있다.
+앱이 꺼져 있어도 된다. 예: *"기획위키 Project_Z 세계관 문서들 읽고 설정 충돌 찾아줘"*, *"이 회의록으로 기획위키에 퀘스트 문서 만들어줘"*.
+
+- 도구: `wiki_projects`, `wiki_templates`, `wiki_list`, `wiki_read`, `wiki_search`, `wiki_create`, `wiki_update`, `wiki_new_project`. 삭제와 Git 동기화는 없다 (앱에서).
+- AI가 고친 문서도 앱의 **기록**에 고치기 전 버전이 남는다. 그림과 맵은 AI가 바꾸지 않는다.
+- 버튼이 하는 일은 `claude mcp add -s user gihoek-wiki -- <앱 실행 파일> --mcp` (Codex는 `codex mcp add`)와 같다. 연결 후 새로 연 AI 세션부터 보인다.
+- 소스로 실행 중이면 `python3 server.py --mcp`로 연결된다.
+
 ## 링크 읽기 (노션, 구글 드라이브, 웹)
 
 메모나 *AI로 다듬기* 요청에 링크를 넣으면 AI가 그 페이지를 직접 읽고 정리한다. 예: `이 노션 문서를 세계관 위키로 정리해줘 https://…`

@@ -121,6 +121,7 @@ def main():
         trash = os.path.join(home, "projects", "테스트 프로젝트", ".wiki", "trash")
         check(len(os.listdir(trash)) == 2, "삭제하면 휴지통으로")
         check(call("GET", "/api/ping")["ok"] is True, "ping")
+        mcp_check(built, env)
         call("DELETE", f"/api/projects/{pid}")
         check(call("GET", "/api/projects") == [] and len(os.listdir(os.path.join(home, "projects", ".trash"))) == 1,
               "프로젝트 삭제하면 .trash로")
@@ -132,6 +133,29 @@ def main():
         except subprocess.TimeoutExpired:
             proc.kill()
         shutil.rmtree(home, ignore_errors=True)
+
+
+def mcp_check(built, env):
+    """터미널 AI용 MCP 서버: 표준 입출력으로 초기화 → 문서 만들기 → 찾기."""
+    cmd = server_cmd(built)[:-1] + ["--mcp"]
+    msgs = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+         "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "smoke", "version": "1"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "wiki_create", "arguments": {
+            "project": "테스트 프로젝트", "template": "note", "title": "MCP 메모", "fields": {"body": "터미널에서 쓴 글"}}}},
+        {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "wiki_search", "arguments": {
+            "project": "테스트 프로젝트", "query": "터미널에서"}}},
+    ]
+    data = "".join(json.dumps(m, ensure_ascii=False) + "\n" for m in msgs).encode("utf-8")
+    r = subprocess.run(cmd, input=data, capture_output=True, env=env, timeout=60)
+    out = {m["id"]: m for m in (json.loads(l) for l in r.stdout.decode("utf-8").splitlines() if l.strip())}
+    check(out.get(1, {}).get("result", {}).get("serverInfo", {}).get("name") == "gihoek-wiki",
+          f"MCP 서버 시작 (stderr: {r.stderr.decode('utf-8', 'replace')[-300:]})")
+    check(len(out[2]["result"]["tools"]) >= 7, "MCP 도구 목록")
+    check(not out[3]["result"].get("isError"), "MCP로 문서 만들기: " + out[3]["result"]["content"][0]["text"][:80])
+    check("MCP 메모" in out[4]["result"]["content"][0]["text"], "MCP로 문서 찾기")
 
 
 if __name__ == "__main__":
